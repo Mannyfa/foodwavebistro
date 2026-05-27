@@ -7,14 +7,14 @@ WORKDIR /usr/src/app
 # Copy package.json and package-lock.json first (for caching)
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --production
+# Install dependencies (ignoring the strict Cloudinary version check)
+RUN npm install --production --legacy-peer-deps
 
 # Copy the rest of your application code
 COPY . .
 
-# Expose the port your app runs on
+
 EXPOSE 5000
 
-# Start the server (adjust this if your start script in package.json is different)
+# Start the server
 CMD ["node", "src/server.js"]
