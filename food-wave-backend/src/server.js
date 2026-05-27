@@ -27,7 +27,16 @@ const io = new Server(server, {
 
 // Middleware
 app.use(helmet()); 
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173' }));
+app.use(cors({
+  origin: [
+    'https://foodwavebistro.vercel.app', // Your live Vercel frontend
+    'http://localhost:5173',             // Your local frontend (for testing)
+    'http://localhost:3000'              
+  ],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json()); 
 app.use(morgan('dev')); 
 
