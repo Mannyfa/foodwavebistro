@@ -225,7 +225,8 @@ function Storefront({ isDark, setIsDark }) {
         {isPreloading && <Preloader onComplete={() => setIsPreloading(false)} theme={theme} />}
       </AnimatePresence>
 
-      <div className={`min-h-screen ${theme.bg} ${theme.text} font-sans selection:bg-brand-orange selection:text-white overflow-hidden transition-colors duration-500`}>
+      {/* FIXED: Removed `overflow-hidden` so sticky works perfectly */}
+      <div className={`min-h-screen w-full ${theme.bg} ${theme.text} font-sans selection:bg-brand-orange selection:text-white transition-colors duration-500`}>
         
         {/* --- EDITORIAL NAVIGATION --- */}
         <nav className={`fixed w-full z-50 transition-all duration-500 ${scrolled ? `${theme.navBg} backdrop-blur-xl border-b ${theme.borderSubtle} py-4` : 'bg-transparent py-8'}`}>
@@ -246,7 +247,7 @@ function Storefront({ isDark, setIsDark }) {
           </div>
         </nav>
 
-        {/* --- HERO SECTION (Strict Left-Image, Right-Text) --- */}
+        {/* --- HERO SECTION --- */}
         <section className={`relative min-h-[90vh] flex items-center justify-center overflow-hidden border-b ${theme.borderSubtle} pt-24 pb-12`}>
           <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-brand-orange/10 rounded-full blur-[150px] pointer-events-none" />
           
@@ -273,17 +274,15 @@ function Storefront({ isDark, setIsDark }) {
           </div>
         </section>
 
-        {/* --- WELCOME SECTION (Strict Left-Image, Right-Text) --- */}
+        {/* --- WELCOME SECTION --- */}
         <section className={`py-12 md:py-32 relative border-b ${theme.borderSubtle}`}>
           <div className="max-w-7xl mx-auto px-6 w-full flex flex-row items-center justify-between gap-6 md:gap-16">
             
-            {/* LEFT ILLUSTRATION */}
             <motion.div initial="hidden" whileInView="show" viewport={{ once: true }} variants={fadeUp} className="w-1/2 relative h-[35vh] md:h-[600px] rounded-[1rem] md:rounded-[2rem] overflow-hidden shadow-2xl">
               <img src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=1000&auto=format&fit=crop" alt="Detailed Food Illustration" className="w-full h-full object-cover grayscale-[30%] hover:grayscale-0 transition-all duration-700" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
             </motion.div>
 
-            {/* RIGHT TEXT */}
             <motion.div initial="hidden" whileInView="show" viewport={{ once: true }} variants={staggerContainer} className="w-1/2 flex flex-col items-start text-left">
               <motion.h2 variants={fadeUp} className={`text-xl sm:text-4xl md:text-6xl font-black uppercase tracking-tighter mb-4 md:mb-8 ${theme.heading}`}>Welcome to Food Wave Bistro</motion.h2>
               <motion.div variants={fadeUp} className={`space-y-2 md:space-y-6 ${theme.textMuted} font-light leading-relaxed text-[8px] sm:text-[10px] md:text-lg max-w-lg`}>
@@ -311,11 +310,10 @@ function Storefront({ isDark, setIsDark }) {
           </div>
         </section>
 
-       {/* --- LOOKBOOK MENU SECTION (Strict Left-Image, Right-Text) --- */}
+        {/* --- LOOKBOOK MENU SECTION --- */}
         <section id="menu" className="py-20 md:py-32 relative">
           <div className="max-w-7xl mx-auto px-6">
             
-            {/* FIXED CATEGORY BAR: Forced horizontal scroll on mobile */}
             <div className={`flex flex-row justify-between items-end mb-12 md:mb-16 gap-6 border-b ${theme.borderSubtle} pb-6 md:pb-8`}>
               <div className="flex flex-row overflow-x-auto w-1/2 hide-scrollbar gap-4 font-mono text-[8px] md:text-xs uppercase tracking-widest items-end">
                 {MENU_CATEGORIES.map(category => (
@@ -336,7 +334,6 @@ function Storefront({ isDark, setIsDark }) {
                 
                 {/* LEFT: Sticky Image Reveal */}
                 <div className="w-1/2 relative">
-                  {/* Adjusted top offset to sit perfectly below the mobile nav */}
                   <div className={`sticky top-24 md:top-32 w-full h-[40vh] md:h-[700px] rounded-[1rem] md:rounded-[2rem] overflow-hidden ${theme.cardBg} ${theme.borderSubtle} shadow-2xl`}>
                     <AnimatePresence mode="wait">
                       {hoveredItem && (
@@ -361,7 +358,6 @@ function Storefront({ isDark, setIsDark }) {
                     <motion.div 
                       key={item.id} 
                       onMouseEnter={() => setHoveredMenuId(item.id)}
-                      // SCROLL SPY: Automatically changes the image when scrolled into view on mobile
                       onViewportEnter={() => setHoveredMenuId(item.id)}
                       viewport={{ amount: 0.5, margin: "-10% 0px -10% 0px" }}
                       className={`w-full flex flex-col items-end justify-center py-8 md:py-12 border-b ${theme.borderSubtle} hover:${theme.border} transition-colors group`}
@@ -611,16 +607,12 @@ function Storefront({ isDark, setIsDark }) {
                         <span className="text-3xl font-black tracking-tighter text-brand-orange">₦{finalTotal.toLocaleString()}</span>
                       </div>
                       
-                      {/* Responsive Checkout Action Container */}
                       <div className="w-full">
-                        {/* Desktop: Standard Button */}
                         <div className="hidden md:block">
                           <button form="checkout-form" type="submit" disabled={isSubmitting} className={`w-full py-5 ${isDark ? 'bg-white text-black' : 'bg-black text-white'} hover:bg-brand-orange hover:text-white font-black uppercase tracking-widest text-xs transition-colors disabled:opacity-50 rounded-xl`}>
                             {isSubmitting ? 'Processing...' : 'Confirm Order'}
                           </button>
                         </div>
-                        
-                        {/* Mobile: Slide-to-Order */}
                         <div className="md:hidden">
                           <SlideToOrder 
                             onConfirm={() => document.getElementById('checkout-form').requestSubmit()} 
