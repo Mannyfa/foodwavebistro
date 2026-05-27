@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, ListOrdered, UtensilsCrossed, Settings, 
-  Clock, DollarSign, Plus, MoreVertical, 
-  CheckCircle2, XCircle, Loader2, Bell, X, ImagePlus, ChevronRight, LogOut, Trash2
+  Clock, DollarSign, Plus, CheckCircle2, XCircle, Loader2, Bell, X, ImagePlus, ChevronRight, LogOut, Trash2, Shield
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -24,6 +23,15 @@ export default function AdminDashboard() {
     { name: 'Beef', price: 1000 }
   ]);
   const [selectedAddOns, setSelectedAddOns] = useState([]);
+
+  // SETTINGS STATE
+  const [settingsData, setSettingsData] = useState({
+    currentPassword: '',
+    newEmail: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [isUpdatingSettings, setIsUpdatingSettings] = useState(false);
 
   // AUTH GUARD
   const token = localStorage.getItem('adminToken');
@@ -142,7 +150,6 @@ export default function AdminDashboard() {
     formData.append('preparationTime', newMeal.preparationTime);
     formData.append('tags', newMeal.tags);
     formData.append('image', imageFile);
-    // Add the Add-ons
     formData.append('addOns', JSON.stringify(selectedAddOns));
 
     try {
@@ -165,6 +172,51 @@ export default function AdminDashboard() {
     finally { setIsSubmitting(false); }
   };
 
+  // --- UPDATE CREDENTIALS LOGIC ---
+  const handleUpdateCredentials = async (e) => {
+    e.preventDefault();
+    
+    // Basic validation
+    if (!settingsData.currentPassword) {
+      return alert("Current password is required to make changes.");
+    }
+    if (settingsData.newPassword && settingsData.newPassword !== settingsData.confirmPassword) {
+      return alert("New passwords do not match.");
+    }
+
+    setIsUpdatingSettings(true);
+
+    try {
+      // You will need to create this route on your backend
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/auth/update-credentials`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          currentPassword: settingsData.currentPassword,
+          newEmail: settingsData.newEmail,
+          newPassword: settingsData.newPassword
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        alert("Credentials updated successfully! Please log in again with your new credentials.");
+        handleLogout(); // Force logout so they use the new credentials
+      } else {
+        alert(data.message || "Failed to update credentials.");
+      }
+    } catch (error) {
+      console.error("Settings update error:", error);
+      alert("Network error while updating credentials.");
+    } finally {
+      setIsUpdatingSettings(false);
+    }
+  };
+
   if (!token) return null; 
 
   return (
@@ -177,6 +229,8 @@ export default function AdminDashboard() {
           <SidebarButton icon={<LayoutDashboard />} label="Overview" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
           <SidebarButton icon={<ListOrdered />} label="Live Orders" active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} badge={orders.filter(o => o.status === 'Pending').length} />
           <SidebarButton icon={<UtensilsCrossed />} label="Menu Manager" active={activeTab === 'menu'} onClick={() => setActiveTab('menu')} />
+          {/* NEW SETTINGS TAB */}
+          <SidebarButton icon={<Settings />} label="Settings" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} />
         </nav>
         <div onClick={handleLogout} className="p-4 border-t border-white/5 text-red-500 text-sm flex items-center gap-2 hover:bg-red-500/10 cursor-pointer transition-colors"><LogOut className="w-4 h-4" /> Secure Logout</div>
       </aside>
@@ -192,7 +246,6 @@ export default function AdminDashboard() {
         <div className="flex-1 overflow-y-auto p-8 relative z-0">
           <AnimatePresence mode="wait">
             
-            {/* --- RESTORED: OVERVIEW TAB --- */}
             {activeTab === 'overview' && (
               <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -203,7 +256,6 @@ export default function AdminDashboard() {
               </motion.div>
             )}
 
-            {/* --- RESTORED: ORDERS TAB --- */}
             {activeTab === 'orders' && (
               <motion.div key="orders" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                 {isLoadingOrders ? (
@@ -230,7 +282,6 @@ export default function AdminDashboard() {
               </motion.div>
             )}
 
-            {/* --- MENU TAB --- */}
             {activeTab === 'menu' && (
               <motion.div key="menu" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="bg-matte border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
                 <div className="p-6 border-b border-white/5 flex justify-between items-center bg-charcoal/50">
@@ -255,6 +306,89 @@ export default function AdminDashboard() {
                 )}
               </motion.div>
             )}
+
+            {/* --- NEW SETTINGS TAB --- */}
+            {activeTab === 'settings' && (
+              <motion.div key="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="max-w-2xl">
+                <div className="bg-matte border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
+                  <div className="p-6 border-b border-white/5 bg-charcoal/50 flex items-center gap-3">
+                    <Shield className="w-6 h-6 text-brand-orange" />
+                    <h3 className="text-lg font-bold">Security & Credentials</h3>
+                  </div>
+                  
+                  <div className="p-8">
+                    <p className="text-sm text-gray-400 mb-8 font-light">Update your admin login credentials here. You must provide your current password to save any changes. If you successfully change your credentials, you will be logged out automatically.</p>
+                    
+                    <form id="settings-form" onSubmit={handleUpdateCredentials} className="space-y-6">
+                      {/* Current Password (Required for security) */}
+                      <div>
+                        <label className="block text-xs font-mono tracking-widest uppercase text-gray-400 mb-2">Current Password *</label>
+                        <input 
+                          required 
+                          type="password" 
+                          placeholder="Verify it's you"
+                          value={settingsData.currentPassword} 
+                          onChange={e => setSettingsData({...settingsData, currentPassword: e.target.value})} 
+                          className="w-full bg-charcoal border border-white/10 rounded-xl px-4 py-3 text-white focus:border-brand-orange outline-none transition-colors" 
+                        />
+                      </div>
+
+                      <div className="pt-6 border-t border-white/5">
+                        <label className="block text-xs font-mono tracking-widest uppercase text-brand-orange mb-4">New Credentials</label>
+                        
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-xs font-mono tracking-widest uppercase text-gray-400 mb-2">New Email Address</label>
+                            <input 
+                              type="email" 
+                              placeholder="Leave blank to keep current email"
+                              value={settingsData.newEmail} 
+                              onChange={e => setSettingsData({...settingsData, newEmail: e.target.value})} 
+                              className="w-full bg-charcoal border border-white/10 rounded-xl px-4 py-3 text-white focus:border-brand-orange outline-none transition-colors" 
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-mono tracking-widest uppercase text-gray-400 mb-2">New Password</label>
+                              <input 
+                                type="password" 
+                                placeholder="Leave blank to keep current"
+                                value={settingsData.newPassword} 
+                                onChange={e => setSettingsData({...settingsData, newPassword: e.target.value})} 
+                                className="w-full bg-charcoal border border-white/10 rounded-xl px-4 py-3 text-white focus:border-brand-orange outline-none transition-colors" 
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-mono tracking-widest uppercase text-gray-400 mb-2">Confirm New Password</label>
+                              <input 
+                                type="password" 
+                                placeholder="Repeat new password"
+                                value={settingsData.confirmPassword} 
+                                onChange={e => setSettingsData({...settingsData, confirmPassword: e.target.value})} 
+                                className="w-full bg-charcoal border border-white/10 rounded-xl px-4 py-3 text-white focus:border-brand-orange outline-none transition-colors" 
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+
+                  <div className="p-6 bg-charcoal/50 border-t border-white/5 flex justify-end">
+                    <button 
+                      form="settings-form" 
+                      type="submit" 
+                      disabled={isUpdatingSettings} 
+                      className="px-8 py-3 bg-brand-orange hover:bg-orange-600 text-white rounded-lg font-bold flex items-center gap-2 transition-colors text-sm shadow-lg shadow-brand-orange/20 disabled:opacity-70"
+                    >
+                      {isUpdatingSettings ? <><Loader2 className="w-4 h-4 animate-spin" /> Updating...</> : 'Save Changes'}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
           </AnimatePresence>
         </div>
       </main>
