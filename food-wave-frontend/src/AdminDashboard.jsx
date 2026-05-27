@@ -49,7 +49,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/v1/orders', {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/orders`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await response.json();
@@ -73,7 +73,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchMenu = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/v1/menu');
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/menu`);
         const data = await response.json();
         if (data.success) setMenuItems(data.data);
       } catch (error) { console.error("Failed to fetch menu:", error); } 
@@ -85,7 +85,7 @@ export default function AdminDashboard() {
   const updateOrderStatus = async (id, newStatus) => {
     setOrders(prev => prev.map(o => o._id === id ? { ...o, status: newStatus } : o));
     try {
-      await fetch(`http://localhost:5000/api/v1/orders/${id}/status`, {
+      await fetch(`${import.meta.env.VITE_API_URL}/api/v1/orders/${id}/status`, {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
@@ -99,7 +99,7 @@ export default function AdminDashboard() {
   const toggleMenuAvailability = async (id, currentStatus) => {
     setMenuItems(prev => prev.map(m => m._id === id ? { ...m, isAvailable: !currentStatus } : m));
     try {
-      await fetch(`http://localhost:5000/api/v1/menu/${id}`, {
+      await fetch(`${import.meta.env.VITE_API_URL}/api/v1/menu/${id}`, {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
@@ -114,7 +114,7 @@ export default function AdminDashboard() {
     if (!window.confirm("Are you sure you want to permanently delete this meal?")) return;
     setMenuItems(prev => prev.filter(m => m._id !== id));
     try {
-      await fetch(`http://localhost:5000/api/v1/menu/${id}`, {
+      await fetch(`${import.meta.env.VITE_API_URL}/api/v1/menu/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -146,7 +146,7 @@ export default function AdminDashboard() {
     formData.append('addOns', JSON.stringify(selectedAddOns));
 
     try {
-      const response = await fetch('http://localhost:5000/api/v1/menu', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/menu`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData

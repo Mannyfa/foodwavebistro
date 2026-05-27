@@ -110,7 +110,7 @@ function Storefront({ isDark, setIsDark }) {
   useEffect(() => {
     const fetchMenu = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/v1/menu');
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/menu`);
         const data = await response.json();
         if (data.success) {
           const formattedMenu = data.data.map(item => ({ ...item, id: item._id }));
@@ -198,7 +198,7 @@ function Storefront({ isDark, setIsDark }) {
     };
 
     try {
-      const response = await fetch('http://localhost:5000/api/v1/orders', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderPayload)
@@ -692,7 +692,7 @@ function AdminLogin() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/v1/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
       const data = await res.json();
       if (data.success) { localStorage.setItem('adminToken', data.token); window.location.href = '/admin'; } else alert(data.message || 'Login failed');
     } catch (error) { alert('Network error connecting to backend.'); } finally { setLoading(false); }
