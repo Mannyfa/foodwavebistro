@@ -10,6 +10,7 @@ import {
 import ownerImage from './assets/images/ownerimg.jpeg';
 import logoImage from './assets/logo.png'; 
 import AdminDashboard from './AdminDashboard';
+import SlideToOrder from './components/SlideToOrder';
 
 const MENU_CATEGORIES = ['All', 'Rice Meals', 'Pasta', 'Grills', 'Small Chops', 'Drinks'];
 
@@ -579,9 +580,31 @@ function Storefront({ isDark, setIsDark }) {
                         <div><label className={`block font-mono text-[10px] tracking-widest uppercase ${theme.textMutedLight} mb-2`}>Order Notes</label><input type="text" value={customer.notes} onChange={e => setCustomer({...customer, notes: e.target.value})} className={`w-full bg-transparent border-b ${theme.borderSubtle} px-0 py-3 ${theme.heading} focus:border-brand-orange outline-none transition-colors`} /></div>
                       </form>
                     </div>
+                    
                     <div className={`p-8 ${theme.cardBg} border-t ${theme.borderSubtle}`}>
-                      <div className="flex justify-between items-center mb-8"><span className={`${theme.textMuted} font-light`}>Total to pay:</span><span className="text-3xl font-black tracking-tighter text-brand-orange">₦{finalTotal.toLocaleString()}</span></div>
-                      <button form="checkout-form" type="submit" disabled={isSubmitting} className={`w-full py-5 ${isDark ? 'bg-white text-black' : 'bg-black text-white'} hover:bg-brand-orange hover:text-white font-black uppercase tracking-widest text-xs transition-colors disabled:opacity-50 rounded-xl`}>{isSubmitting ? 'Processing...' : 'Confirm Order'}</button>
+                      <div className="flex justify-between items-center mb-8">
+                        <span className={`${theme.textMuted} font-light`}>Total to pay:</span>
+                        <span className="text-3xl font-black tracking-tighter text-brand-orange">₦{finalTotal.toLocaleString()}</span>
+                      </div>
+                      
+                      {/* Responsive Checkout Action Container */}
+                      <div className="w-full">
+                        {/* Desktop: Standard Button */}
+                        <div className="hidden md:block">
+                          <button form="checkout-form" type="submit" disabled={isSubmitting} className={`w-full py-5 ${isDark ? 'bg-white text-black' : 'bg-black text-white'} hover:bg-brand-orange hover:text-white font-black uppercase tracking-widest text-xs transition-colors disabled:opacity-50 rounded-xl`}>
+                            {isSubmitting ? 'Processing...' : 'Confirm Order'}
+                          </button>
+                        </div>
+                        
+                        {/* Mobile: Slide-to-Order */}
+                        <div className="md:hidden">
+                          <SlideToOrder 
+                            onConfirm={() => document.getElementById('checkout-form').requestSubmit()} 
+                            isSubmitting={isSubmitting} 
+                          />
+                        </div>
+                      </div>
+                      
                     </div>
                   </>
                 )}
