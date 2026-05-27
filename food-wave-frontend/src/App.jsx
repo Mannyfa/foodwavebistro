@@ -311,14 +311,15 @@ function Storefront({ isDark, setIsDark }) {
           </div>
         </section>
 
-        {/* --- LOOKBOOK MENU SECTION (Strict Left-Image, Right-Text) --- */}
+       {/* --- LOOKBOOK MENU SECTION (Strict Left-Image, Right-Text) --- */}
         <section id="menu" className="py-20 md:py-32 relative">
           <div className="max-w-7xl mx-auto px-6">
             
+            {/* FIXED CATEGORY BAR: Forced horizontal scroll on mobile */}
             <div className={`flex flex-row justify-between items-end mb-12 md:mb-16 gap-6 border-b ${theme.borderSubtle} pb-6 md:pb-8`}>
-              <div className="flex flex-col md:flex-row overflow-x-auto w-1/2 hide-scrollbar gap-4 font-mono text-[8px] md:text-xs uppercase tracking-widest items-start md:items-end">
+              <div className="flex flex-row overflow-x-auto w-1/2 hide-scrollbar gap-4 font-mono text-[8px] md:text-xs uppercase tracking-widest items-end">
                 {MENU_CATEGORIES.map(category => (
-                  <button key={category} onClick={() => setActiveCategory(category)} className={`whitespace-nowrap transition-colors pb-1 border-b-2 text-left md:text-center ${activeCategory === category ? 'border-brand-orange text-brand-orange' : `border-transparent ${theme.textMuted} hover:${theme.heading}`}`}>
+                  <button key={category} onClick={() => setActiveCategory(category)} className={`whitespace-nowrap transition-colors pb-1 border-b-2 text-center ${activeCategory === category ? 'border-brand-orange text-brand-orange' : `border-transparent ${theme.textMuted} hover:${theme.heading}`}`}>
                     {category}
                   </button>
                 ))}
@@ -332,8 +333,11 @@ function Storefront({ isDark, setIsDark }) {
               <div className={`py-32 text-center font-mono text-[10px] md:text-xs ${theme.textMuted} uppercase tracking-widest`}>No items available.</div>
             ) : (
               <div className="flex flex-row gap-6 md:gap-16 relative min-h-[80vh]">
+                
+                {/* LEFT: Sticky Image Reveal */}
                 <div className="w-1/2 relative">
-                  <div className={`sticky top-32 w-full h-[40vh] md:h-[700px] rounded-[1rem] md:rounded-[2rem] overflow-hidden ${theme.cardBg} ${theme.borderSubtle} shadow-2xl`}>
+                  {/* Adjusted top offset to sit perfectly below the mobile nav */}
+                  <div className={`sticky top-24 md:top-32 w-full h-[40vh] md:h-[700px] rounded-[1rem] md:rounded-[2rem] overflow-hidden ${theme.cardBg} ${theme.borderSubtle} shadow-2xl`}>
                     <AnimatePresence mode="wait">
                       {hoveredItem && (
                         <motion.img
@@ -351,21 +355,41 @@ function Storefront({ isDark, setIsDark }) {
                   </div>
                 </div>
 
+                {/* RIGHT: Typography Menu List */}
                 <div className="w-1/2 flex flex-col items-end text-right">
                   {filteredMenu.map((item) => (
-                    <div key={item.id} onMouseEnter={() => setHoveredMenuId(item.id)} className={`w-full flex flex-col items-end justify-center py-8 md:py-12 border-b ${theme.borderSubtle} hover:${theme.border} transition-colors group`}>
-                      <h3 className={`text-lg sm:text-3xl md:text-5xl font-black uppercase tracking-tighter group-hover:text-brand-orange transition-colors duration-300 ${theme.heading}`}>{item.name}</h3>
+                    <motion.div 
+                      key={item.id} 
+                      onMouseEnter={() => setHoveredMenuId(item.id)}
+                      // SCROLL SPY: Automatically changes the image when scrolled into view on mobile
+                      onViewportEnter={() => setHoveredMenuId(item.id)}
+                      viewport={{ amount: 0.5, margin: "-10% 0px -10% 0px" }}
+                      className={`w-full flex flex-col items-end justify-center py-8 md:py-12 border-b ${theme.borderSubtle} hover:${theme.border} transition-colors group`}
+                    >
+                      <h3 className={`text-lg sm:text-3xl md:text-5xl font-black uppercase tracking-tighter group-hover:text-brand-orange transition-colors duration-300 ${theme.heading}`}>
+                        {item.name}
+                      </h3>
                       <p className={`${theme.textMuted} text-[9px] md:text-sm mt-2 md:mt-3 font-light leading-relaxed max-w-[250px] md:max-w-sm`}>{item.description}</p>
+                      
                       <div className={`flex items-center gap-2 md:gap-4 mt-3 md:mt-4 font-mono text-[8px] md:text-[10px] ${theme.textMutedLight} uppercase tracking-widest`}>
-                        <span className="flex items-center gap-1"><Star className="w-2 h-2 md:w-3 md:h-3 text-brand-gold" /> {item.rating || '5.0'}</span><span>|</span><span className="flex items-center gap-1"><Clock className="w-2 h-2 md:w-3 md:h-3" /> {item.preparationTime} min</span>
+                        <span className="flex items-center gap-1"><Star className="w-2 h-2 md:w-3 md:h-3 text-brand-gold" /> {item.rating || '5.0'}</span>
+                        <span>|</span>
+                        <span className="flex items-center gap-1"><Clock className="w-2 h-2 md:w-3 md:h-3" /> {item.preparationTime} min</span>
                       </div>
+                      
                       <div className="mt-4 md:mt-8 flex flex-col items-end gap-3 md:gap-4">
                         <span className={`text-base md:text-2xl font-light ${theme.text}`}>₦{item.price.toLocaleString()}</span>
-                        <button onClick={() => handleOpenCustomization(item)} className={`text-[8px] md:text-[10px] font-bold tracking-widest uppercase border ${theme.border} hover:border-brand-orange hover:bg-brand-orange hover:text-white px-4 py-2 md:px-6 md:py-3 rounded-full transition-all ${theme.text}`}>+ Add to Bag</button>
+                        <button 
+                          onClick={() => handleOpenCustomization(item)} 
+                          className={`text-[8px] md:text-[10px] font-bold tracking-widest uppercase border ${theme.border} hover:border-brand-orange hover:bg-brand-orange hover:text-white px-4 py-2 md:px-6 md:py-3 rounded-full transition-all ${theme.text}`}
+                        >
+                          + Add to Bag
+                        </button>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
+
               </div>
             )}
           </div>
