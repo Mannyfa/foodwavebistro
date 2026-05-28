@@ -139,14 +139,19 @@ function Storefront({ isDark, setIsDark }) {
 
   const addToCart = (item, selectedAddOns = []) => {
     const addOnsPrice = selectedAddOns.reduce((sum, a) => sum + a.price, 0);
-    const finalPrice = item.price + addOnsPrice;
+    
+    // Calculate base price considering discount
+    const hasDiscount = item.discountPercentage > 0;
+    const basePrice = hasDiscount ? item.price - (item.price * (item.discountPercentage / 100)) : item.price;
+    const finalPrice = basePrice + addOnsPrice;
+    
     const addOnsString = selectedAddOns.map(a => a.name).sort().join(',');
     const cartItemId = `${item.id}-${addOnsString}`;
 
     setCart(prev => {
       const existing = prev.find(i => i.cartItemId === cartItemId);
       if (existing) return prev.map(i => i.cartItemId === cartItemId ? { ...i, qty: i.qty + 1 } : i);
-      return [...prev, { ...item, cartItemId, price: finalPrice, basePrice: item.price, selectedAddOns, qty: 1 }];
+      return [...prev, { ...item, cartItemId, price: finalPrice, basePrice, selectedAddOns, qty: 1 }];
     });
 
     setActiveMeal(null);
@@ -225,7 +230,6 @@ function Storefront({ isDark, setIsDark }) {
         {isPreloading && <Preloader onComplete={() => setIsPreloading(false)} theme={theme} />}
       </AnimatePresence>
 
-      {/* FIXED: Removed `overflow-hidden` so sticky works perfectly */}
       <div className={`min-h-screen w-full ${theme.bg} ${theme.text} font-sans selection:bg-brand-orange selection:text-white transition-colors duration-500`}>
         
         {/* --- EDITORIAL NAVIGATION --- */}
@@ -354,36 +358,65 @@ function Storefront({ isDark, setIsDark }) {
 
                 {/* RIGHT: Typography Menu List */}
                 <div className="w-1/2 flex flex-col items-end text-right">
-                  {filteredMenu.map((item) => (
-                    <motion.div 
-                      key={item.id} 
-                      onMouseEnter={() => setHoveredMenuId(item.id)}
-                      onViewportEnter={() => setHoveredMenuId(item.id)}
-                      viewport={{ amount: 0.5, margin: "-10% 0px -10% 0px" }}
-                      className={`w-full flex flex-col items-end justify-center py-8 md:py-12 border-b ${theme.borderSubtle} hover:${theme.border} transition-colors group`}
-                    >
-                      <h3 className={`text-lg sm:text-3xl md:text-5xl font-black uppercase tracking-tighter group-hover:text-brand-orange transition-colors duration-300 ${theme.heading}`}>
-                        {item.name}
-                      </h3>
-                      <p className={`${theme.textMuted} text-[9px] md:text-sm mt-2 md:mt-3 font-light leading-relaxed max-w-[250px] md:max-w-sm`}>{item.description}</p>
-                      
-                      <div className={`flex items-center gap-2 md:gap-4 mt-3 md:mt-4 font-mono text-[8px] md:text-[10px] ${theme.textMutedLight} uppercase tracking-widest`}>
-                        <span className="flex items-center gap-1"><Star className="w-2 h-2 md:w-3 md:h-3 text-brand-gold" /> {item.rating || '5.0'}</span>
-                        <span>|</span>
-                        <span className="flex items-center gap-1"><Clock className="w-2 h-2 md:w-3 md:h-3" /> {item.preparationTime} min</span>
-                      </div>
-                      
-                      <div className="mt-4 md:mt-8 flex flex-col items-end gap-3 md:gap-4">
-                        <span className={`text-base md:text-2xl font-light ${theme.text}`}>₦{item.price.toLocaleString()}</span>
-                        <button 
-                          onClick={() => handleOpenCustomization(item)} 
-                          className={`text-[8px] md:text-[10px] font-bold tracking-widest uppercase border ${theme.border} hover:border-brand-orange hover:bg-brand-orange hover:text-white px-4 py-2 md:px-6 md:py-3 rounded-full transition-all ${theme.text}`}
-                        >
-                          + Add to Bag
-                        </button>
-                      </div>
-                    </motion.div>
-                  ))}
+                  {filteredMenu.map((item) => {
+                    // Pre-calculate discount variables for render
+                    const hasDiscount = item.discountPercentage > 0;
+                    const discountedPrice = hasDiscount 
+                      ? item.price - (item.price * (item.discountPercentage / 100)) 
+                      : item.price;
+
+                    return (
+                      <motion.div 
+                        key={item.id} 
+                        onMouseEnter={() => setHoveredMenuId(item.id)}
+                        onViewportEnter={() => setHoveredMenuId(item.id)}
+                        viewport={{ amount: 0.5, margin: "-10% 0px -10% 0px" }}
+                        className={`w-full flex flex-col items-end justify-center py-8 md:py-12 border-b ${theme.borderSubtle} hover:${theme.border} transition-colors group`}
+                      >
+                        <h3 className={`text-lg sm:text-3xl md:text-5xl font-black uppercase tracking-tighter group-hover:text-brand-orange transition-colors duration-300 ${theme.heading}`}>
+                          {item.name}
+                        </h3>
+                        <p className={`${theme.textMuted} text-[9px] md:text-sm mt-2 md:mt-3 font-light leading-relaxed max-w-[250px] md:max-w-sm`}>{item.description}</p>
+                        
+                        <div className={`flex items-center gap-2 md:gap-4 mt-3 md:mt-4 font-mono text-[8px] md:text-[10px] ${theme.textMutedLight} uppercase tracking-widest`}>
+                          <span className="flex items-center gap-1"><Star className="w-2 h-2 md:w-3 md:h-3 text-brand-gold" /> {item.rating || '5.0'}</span>
+                          <span>|</span>
+                          <span className="flex items-center gap-1"><Clock className="w-2 h-2 md:w-3 md:h-3" /> {item.preparationTime} min</span>
+                        </div>
+                        
+                        <div className="mt-4 md:mt-8 flex flex-col items-end gap-3 md:gap-4">
+                          
+                          {/* DYNAMIC DISCOUNT RENDERING */}
+                          {hasDiscount ? (
+                            <div className="flex flex-col items-end">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-base md:text-2xl font-bold text-brand-orange`}>
+                                  ₦{discountedPrice.toLocaleString()}
+                                </span>
+                                <span className="text-[10px] font-bold bg-brand-orange/10 text-brand-orange px-1.5 py-0.5 rounded">
+                                  -{item.discountPercentage}%
+                                </span>
+                              </div>
+                              <span className={`text-[10px] md:text-xs font-medium ${theme.textMutedLight} line-through mt-1`}>
+                                ₦{item.price.toLocaleString()}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className={`text-base md:text-2xl font-light ${theme.text}`}>
+                              ₦{item.price.toLocaleString()}
+                            </span>
+                          )}
+
+                          <button 
+                            onClick={() => handleOpenCustomization(item)} 
+                            className={`text-[8px] md:text-[10px] font-bold tracking-widest uppercase border ${theme.border} hover:border-brand-orange hover:bg-brand-orange hover:text-white px-4 py-2 md:px-6 md:py-3 rounded-full transition-all ${theme.text}`}
+                          >
+                            + Add to Bag
+                          </button>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
 
               </div>
@@ -513,8 +546,20 @@ function Storefront({ isDark, setIsDark }) {
                     <p className={`text-gray-500 font-mono text-xs uppercase tracking-widest`}>No add-ons available for this item.</p>
                   )}
                 </div>
-                <button onClick={() => addToCart(activeMeal, cartAddOns)} className={`w-full py-5 ${isDark ? 'bg-white text-black' : 'bg-black text-white'} hover:bg-brand-orange hover:text-white font-black uppercase tracking-widest text-xs transition-colors rounded-xl`}>
-                  Add to Bag • ₦{(activeMeal.price + cartAddOns.reduce((sum, a) => sum + a.price, 0)).toLocaleString()}
+                
+                {/* DYNAMIC BASE PRICE FOR CUSTOMIZATION MODAL */}
+                <button 
+                  onClick={() => addToCart(activeMeal, cartAddOns)} 
+                  className={`w-full py-5 ${isDark ? 'bg-white text-black' : 'bg-black text-white'} hover:bg-brand-orange hover:text-white font-black uppercase tracking-widest text-xs transition-colors rounded-xl`}
+                >
+                  Add to Bag • ₦{
+                    (
+                      (activeMeal.discountPercentage > 0 
+                        ? activeMeal.price - (activeMeal.price * (activeMeal.discountPercentage / 100)) 
+                        : activeMeal.price) 
+                      + cartAddOns.reduce((sum, a) => sum + a.price, 0)
+                    ).toLocaleString()
+                  }
                 </button>
               </motion.div>
             </div>
