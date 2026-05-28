@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChevronRight, Star, Clock, MessageCircle, X, Plus, Minus, 
   CreditCard, Loader2, ArrowLeft, CheckCircle2, MapPin, Phone,
-  Sun, Moon, Info, ShieldCheck, Zap
+  Sun, Moon, Info, ShieldCheck, Zap, User, LogOut
 } from 'lucide-react';
 
 import ownerImage from './assets/images/ownerimg.jpeg';
@@ -100,12 +100,29 @@ function Storefront({ isDark, setIsDark }) {
   const [menuItems, setMenuItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // AUTHENTICATION STATES
+  const [loggedInCustomer, setLoggedInCustomer] = useState(null);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState('login'); 
+  const [authData, setAuthData] = useState({ name: '', email: '', password: '', phone: '', address: '' });
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+
   // CHECKOUT STATES
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [finalTotal, setFinalTotal] = useState(0);
   const [customer, setCustomer] = useState({ name: '', phone: '', address: '', notes: '' });
+
+  // CHECK SESSION ON MOUNT
+  useEffect(() => {
+    const storedCustomer = localStorage.getItem('customerData');
+    if (storedCustomer) {
+      const data = JSON.parse(storedCustomer);
+      setLoggedInCustomer(data);
+      setCustomer({ name: data.name, phone: data.phone || '', address: data.address || '', notes: '' });
+    }
+  }, []);
 
   useEffect(() => {
     const fetchMenu = async () => {
@@ -128,6 +145,44 @@ function Storefront({ isDark, setIsDark }) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // AUTHENTICATION LOGIC
+  const handleAuthSubmit = async (e) => {
+    e.preventDefault();
+    setIsAuthLoading(true);
+    const endpoint = authMode === 'login' ? '/api/v1/auth/customer/login' : '/api/v1/auth/customer/register';
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(authData)
+      });
+      const data = await res.json();
+      if (data.success) {
+        localStorage.setItem('customerToken', data.token);
+        localStorage.setItem('customerData', JSON.stringify(data.customer));
+        setLoggedInCustomer(data.customer);
+        setCustomer({ name: data.customer.name, phone: data.customer.phone || '', address: data.customer.address || '', notes: '' });
+        setIsAuthOpen(false);
+        setAuthData({ name: '', email: '', password: '', phone: '', address: '' });
+      } else {
+        alert(data.message || 'Authentication failed');
+      }
+    } catch (error) {
+      alert('Network error connecting to backend.');
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  const handleCustomerLogout = () => {
+    localStorage.removeItem('customerToken');
+    localStorage.removeItem('customerData');
+    setLoggedInCustomer(null);
+    setCustomer({ name: '', phone: '', address: '', notes: '' });
+    setIsAuthOpen(false);
+  };
+
   const handleOpenCustomization = (item) => {
     if (!item.addOns || item.addOns.length === 0) {
       addToCart(item, []);
@@ -139,8 +194,6 @@ function Storefront({ isDark, setIsDark }) {
 
   const addToCart = (item, selectedAddOns = []) => {
     const addOnsPrice = selectedAddOns.reduce((sum, a) => sum + a.price, 0);
-    
-    // Calculate base price considering discount
     const hasDiscount = item.discountPercentage > 0;
     const basePrice = hasDiscount ? item.price - (item.price * (item.discountPercentage / 100)) : item.price;
     const finalPrice = basePrice + addOnsPrice;
@@ -216,7 +269,11 @@ function Storefront({ isDark, setIsDark }) {
         setTimeout(() => {
           setIsCheckoutOpen(false);
           setOrderSuccess(false);
-          setCustomer({ name: '', phone: '', address: '', notes: '' });
+          if (!loggedInCustomer) {
+            setCustomer({ name: '', phone: '', address: '', notes: '' });
+          } else {
+             setCustomer({ ...customer, notes: '' });
+          }
         }, 15000);
       } else alert('Something went wrong. Please try again.');
     } catch (error) { alert('Network error. Please ensure your backend is running.'); } 
@@ -243,7 +300,12 @@ function Storefront({ isDark, setIsDark }) {
                 {isDark ? <Sun className="w-4 h-4 md:w-5 md:h-5" /> : <Moon className="w-4 h-4 md:w-5 md:h-5" />}
               </button>
               <a href="#menu" className={`hidden md:block hover:${theme.heading} transition-colors`}>Menu</a>
-              <a href="#info" className={`hidden md:block hover:${theme.heading} transition-colors`}>Info</a>
+              
+              <button onClick={() => setIsAuthOpen(true)} className={`${theme.heading} hover:text-brand-orange transition-colors flex items-center gap-1`}>
+                <User className="w-4 h-4 md:w-5 md:h-5" />
+                <span className="hidden md:inline">{loggedInCustomer ? loggedInCustomer.name.split(' ')[0] : 'SIGN IN'}</span>
+              </button>
+
               <button onClick={() => setIsCartOpen(true)} className={`${theme.heading} hover:text-brand-orange transition-colors`}>
                 [ BAG : {cart.reduce((acc, item) => acc + item.qty, 0)} ]
               </button>
@@ -359,7 +421,6 @@ function Storefront({ isDark, setIsDark }) {
                 {/* RIGHT: Typography Menu List */}
                 <div className="w-1/2 flex flex-col items-end text-right">
                   {filteredMenu.map((item) => {
-                    // Pre-calculate discount variables for render
                     const hasDiscount = item.discountPercentage > 0;
                     const discountedPrice = hasDiscount 
                       ? item.price - (item.price * (item.discountPercentage / 100)) 
@@ -385,8 +446,6 @@ function Storefront({ isDark, setIsDark }) {
                         </div>
                         
                         <div className="mt-4 md:mt-8 flex flex-col items-end gap-3 md:gap-4">
-                          
-                          {/* DYNAMIC DISCOUNT RENDERING */}
                           {hasDiscount ? (
                             <div className="flex flex-col items-end">
                               <div className="flex items-center gap-2">
@@ -424,7 +483,7 @@ function Storefront({ isDark, setIsDark }) {
           </div>
         </section>
 
-        {/* --- HOW IT WORKS (The Process) --- */}
+        {/* --- HOW IT WORKS --- */}
         <section className={`py-16 md:py-32 relative border-b ${theme.borderSubtle} ${theme.cardBg}`}>
           <div className="max-w-7xl mx-auto px-6">
             <div className="text-center mb-16">
@@ -448,10 +507,9 @@ function Storefront({ isDark, setIsDark }) {
           </div>
         </section>
 
-        {/* --- ESSENTIAL INFO: HOURS & DELIVERY --- */}
+        {/* --- ESSENTIAL INFO --- */}
         <section id="info" className={`py-16 md:py-32 relative border-b ${theme.borderSubtle}`}>
           <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row gap-12 md:gap-20">
-            
             <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="w-full md:w-1/2">
               <h2 className={`text-3xl md:text-5xl font-black uppercase tracking-tighter mb-8 md:mb-12 ${theme.heading}`}>Operating Hours</h2>
               <div className={`p-8 rounded-2xl ${theme.cardBg} border ${theme.borderSubtle} space-y-6`}>
@@ -465,7 +523,6 @@ function Storefront({ isDark, setIsDark }) {
                 </div>
               </div>
             </motion.div>
-
             <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="w-full md:w-1/2">
               <h2 className={`text-3xl md:text-5xl font-black uppercase tracking-tighter mb-8 md:mb-12 ${theme.heading}`}>Delivery Logistics</h2>
               <div className={`p-8 rounded-2xl ${theme.cardBg} border ${theme.borderSubtle} space-y-8`}>
@@ -482,7 +539,6 @@ function Storefront({ isDark, setIsDark }) {
                 </div>
               </div>
             </motion.div>
-
           </div>
         </section>
 
@@ -519,6 +575,64 @@ function Storefront({ isDark, setIsDark }) {
             </div>
           </div>
         </section>
+
+        {/* --- AUTHENTICATION DRAWER --- */}
+        <AnimatePresence>
+          {isAuthOpen && (
+            <>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsAuthOpen(false)} className={`fixed inset-0 ${theme.overlay} backdrop-blur-md z-[100]`} />
+              <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className={`fixed top-0 right-0 h-full w-full sm:w-[450px] ${theme.modalBg} border-l ${theme.borderSubtle} z-[100] flex flex-col shadow-2xl`}>
+                <div className={`p-8 border-b ${theme.borderSubtle} flex justify-between items-center`}>
+                  <h2 className={`text-2xl font-black uppercase tracking-tighter ${theme.heading}`}>
+                    {loggedInCustomer ? 'Profile' : (authMode === 'login' ? 'Sign In' : 'Create Account')}
+                  </h2>
+                  <button onClick={() => setIsAuthOpen(false)} className={`${theme.textMuted} hover:${theme.heading} transition-colors`}><X className="w-6 h-6" /></button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-8">
+                  {loggedInCustomer ? (
+                    <div className="space-y-6">
+                      <div className={`p-6 rounded-2xl ${theme.cardBg} border ${theme.borderSubtle}`}>
+                        <div className="w-16 h-16 bg-brand-orange/20 text-brand-orange rounded-full flex items-center justify-center mb-4"><User className="w-8 h-8"/></div>
+                        <h3 className={`text-xl font-bold uppercase ${theme.heading}`}>{loggedInCustomer.name}</h3>
+                        <p className={`${theme.textMuted} text-sm mt-1`}>{loggedInCustomer.email}</p>
+                        <p className={`${theme.textMuted} text-sm mt-1`}>{loggedInCustomer.phone}</p>
+                      </div>
+                      <button onClick={handleCustomerLogout} className="w-full py-4 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white font-black uppercase tracking-widest text-xs transition-colors rounded-xl flex items-center justify-center gap-2">
+                        <LogOut className="w-4 h-4"/> Sign Out
+                      </button>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleAuthSubmit} className="space-y-6">
+                      {authMode === 'register' && (
+                        <div><label className={`block font-mono text-[10px] tracking-widest uppercase ${theme.textMutedLight} mb-2`}>Full Name *</label><input required type="text" value={authData.name} onChange={e => setAuthData({...authData, name: e.target.value})} className={`w-full bg-transparent border-b ${theme.borderSubtle} px-0 py-3 ${theme.heading} focus:border-brand-orange outline-none transition-colors`} /></div>
+                      )}
+                      <div><label className={`block font-mono text-[10px] tracking-widest uppercase ${theme.textMutedLight} mb-2`}>Email Address *</label><input required type="email" value={authData.email} onChange={e => setAuthData({...authData, email: e.target.value})} className={`w-full bg-transparent border-b ${theme.borderSubtle} px-0 py-3 ${theme.heading} focus:border-brand-orange outline-none transition-colors`} /></div>
+                      <div><label className={`block font-mono text-[10px] tracking-widest uppercase ${theme.textMutedLight} mb-2`}>Password *</label><input required type="password" value={authData.password} onChange={e => setAuthData({...authData, password: e.target.value})} className={`w-full bg-transparent border-b ${theme.borderSubtle} px-0 py-3 ${theme.heading} focus:border-brand-orange outline-none transition-colors`} /></div>
+
+                      {authMode === 'register' && (
+                        <>
+                          <div><label className={`block font-mono text-[10px] tracking-widest uppercase ${theme.textMutedLight} mb-2`}>Phone Number</label><input type="tel" value={authData.phone} onChange={e => setAuthData({...authData, phone: e.target.value})} className={`w-full bg-transparent border-b ${theme.borderSubtle} px-0 py-3 ${theme.heading} focus:border-brand-orange outline-none transition-colors`} /></div>
+                          <div><label className={`block font-mono text-[10px] tracking-widest uppercase ${theme.textMutedLight} mb-2`}>Delivery Address</label><textarea rows="2" value={authData.address} onChange={e => setAuthData({...authData, address: e.target.value})} className={`w-full bg-transparent border-b ${theme.borderSubtle} px-0 py-3 ${theme.heading} focus:border-brand-orange outline-none resize-none transition-colors`} /></div>
+                        </>
+                      )}
+
+                      <button type="submit" disabled={isAuthLoading} className={`w-full py-5 ${isDark ? 'bg-white text-black' : 'bg-black text-white'} hover:bg-brand-orange hover:text-white font-black uppercase tracking-widest text-xs transition-colors rounded-xl disabled:opacity-50 mt-8`}>
+                        {isAuthLoading ? 'Processing...' : (authMode === 'login' ? 'Sign In' : 'Create Account')}
+                      </button>
+
+                      <div className="text-center mt-6">
+                        <button type="button" onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} className={`font-mono text-[10px] uppercase tracking-widest text-brand-orange border-b border-brand-orange pb-1 hover:opacity-70 transition-opacity`}>
+                          {authMode === 'login' ? 'Create an account' : 'Already have an account? Sign In'}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
 
         {/* --- CUSTOMIZATION MODAL (ADD-ONS) --- */}
         <AnimatePresence>
@@ -636,8 +750,21 @@ function Storefront({ isDark, setIsDark }) {
                   </div>
                 ) : (
                   <>
-                    <div className={`p-8 border-b ${theme.borderSubtle} flex items-center gap-4`}><button onClick={() => { setIsCheckoutOpen(false); setIsCartOpen(true); }} className={`${theme.textMuted} hover:${theme.heading} transition-colors`}><ArrowLeft className="w-6 h-6" /></button><h2 className={`text-2xl font-black uppercase tracking-tighter ${theme.heading}`}>Delivery Details</h2></div>
+                    <div className={`p-8 border-b ${theme.borderSubtle} flex items-center justify-between`}>
+                      <div className="flex items-center gap-4">
+                        <button onClick={() => { setIsCheckoutOpen(false); setIsCartOpen(true); }} className={`${theme.textMuted} hover:${theme.heading} transition-colors`}><ArrowLeft className="w-6 h-6" /></button>
+                        <h2 className={`text-2xl font-black uppercase tracking-tighter ${theme.heading}`}>Delivery Details</h2>
+                      </div>
+                      {!loggedInCustomer && (
+                        <span className={`text-[10px] font-mono uppercase tracking-widest bg-brand-orange/10 text-brand-orange px-2 py-1 rounded`}>Guest Checkout</span>
+                      )}
+                    </div>
                     <div className="flex-1 overflow-y-auto p-8">
+                      {!loggedInCustomer && (
+                        <div className={`mb-8 p-4 border border-brand-orange/30 bg-brand-orange/5 rounded-xl`}>
+                          <p className={`text-xs ${theme.text} font-light`}>Want to checkout faster next time? <button onClick={() => {setIsCheckoutOpen(false); setAuthMode('register'); setIsAuthOpen(true);}} className="text-brand-orange font-bold uppercase tracking-widest text-[10px] border-b border-brand-orange ml-1 hover:opacity-70">Create an account</button></p>
+                        </div>
+                      )}
                       <form id="checkout-form" onSubmit={handleCheckoutSubmit} className="space-y-6">
                         <div><label className={`block font-mono text-[10px] tracking-widest uppercase ${theme.textMutedLight} mb-2`}>Full Name</label><input required type="text" value={customer.name} onChange={e => setCustomer({...customer, name: e.target.value})} className={`w-full bg-transparent border-b ${theme.borderSubtle} px-0 py-3 ${theme.heading} focus:border-brand-orange outline-none transition-colors`} /></div>
                         <div><label className={`block font-mono text-[10px] tracking-widest uppercase ${theme.textMutedLight} mb-2`}>Phone Number</label><input required type="tel" value={customer.phone} onChange={e => setCustomer({...customer, phone: e.target.value})} className={`w-full bg-transparent border-b ${theme.borderSubtle} px-0 py-3 ${theme.heading} focus:border-brand-orange outline-none transition-colors`} /></div>
@@ -665,7 +792,6 @@ function Storefront({ isDark, setIsDark }) {
                           />
                         </div>
                       </div>
-                      
                     </div>
                   </>
                 )}
