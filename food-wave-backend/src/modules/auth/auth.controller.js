@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const Admin = require('./auth.model'); // Import the new model
+const Customer = require('./customer.model');
 
 // @desc    Admin Authentication
 // @route   POST /api/v1/auth/login
@@ -97,5 +98,72 @@ exports.updateCredentials = async (req, res) => {
   } catch (error) {
     console.error('Update credentials error:', error);
     res.status(500).json({ success: false, message: 'Server error while updating credentials.' });
+  }
+};
+
+// @desc    Register a new customer
+// @route   POST /api/v1/auth/customer/register
+// @access  Public
+exports.registerCustomer = async (req, res) => {
+  try {
+    const { name, email, password, phone, address } = req.body;
+    
+    // Check if email is already taken
+    const customerExists = await Customer.findOne({ email });
+    if (customerExists) {
+      return res.status(400).json({ success: false, message: 'Email already registered.' });
+    }
+
+    // Create the customer
+    const customer = await Customer.create({ name, email, password, phone, address });
+    
+    // Generate token
+    const token = jwt.sign(
+      { id: customer._id, role: 'customer' }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: '30d' }
+    );
+
+    res.status(201).json({ 
+      success: true, 
+      token, 
+      customer: { id: customer._id, name, email, phone, address } 
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Login a customer
+// @route   POST /api/v1/auth/customer/login
+// @access  Public
+exports.loginCustomer = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Please provide email and password' });
+    }
+
+    // Find customer and verify password
+    const customer = await Customer.findOne({ email }).select('+password');
+    if (!customer || !(await customer.matchPassword(password))) {
+      return res.status(401).json({ success: false, message: 'Invalid email or password' });
+    }
+
+    // Generate token
+    const token = jwt.sign(
+      { id: customer._id, role: 'customer' }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: '30d' }
+    );
+
+    res.status(200).json({ 
+      success: true, 
+      token, 
+      customer: { id: customer._id, name: customer.name, email: customer.email, phone: customer.phone, address: customer.address } 
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
