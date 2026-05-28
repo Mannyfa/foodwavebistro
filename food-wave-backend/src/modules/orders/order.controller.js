@@ -74,3 +74,19 @@ exports.updateOrderStatus = async (req, res) => {
     res.status(400).json({ success: false, message: error.message });
   }
 };
+
+// @desc    Get order history for a specific customer
+// @route   GET /api/v1/orders/history/:email
+// @access  Public
+exports.getCustomerOrders = async (req, res) => {
+  try {
+    // Find orders matching the customer's email and sort by newest first
+    const orders = await Order.find({ 'customer.email': req.params.email })
+      .populate('items.menuItem', 'name') // Pulls the meal name so the frontend can display it
+      .sort({ createdAt: -1 });
+    
+    res.status(200).json({ success: true, data: orders });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

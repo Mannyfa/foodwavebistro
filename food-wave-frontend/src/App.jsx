@@ -107,6 +107,10 @@ function Storefront({ isDark, setIsDark }) {
   const [authData, setAuthData] = useState({ name: '', email: '', password: '', phone: '', address: '' });
   const [isAuthLoading, setIsAuthLoading] = useState(false);
 
+  // ORDER HISTORY STATES
+  const [myOrders, setMyOrders] = useState([]);
+  const [isLoadingMyOrders, setIsLoadingMyOrders] = useState(false);
+
   // CHECKOUT STATES
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -124,6 +128,7 @@ function Storefront({ isDark, setIsDark }) {
     }
   }, []);
 
+  // FETCH MENU
   useEffect(() => {
     const fetchMenu = async () => {
       try {
@@ -138,6 +143,27 @@ function Storefront({ isDark, setIsDark }) {
     };
     fetchMenu();
   }, []);
+
+  // FETCH ORDER HISTORY
+  useEffect(() => {
+    const fetchMyOrders = async () => {
+      if (!loggedInCustomer || !isAuthOpen) return;
+      setIsLoadingMyOrders(true);
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/orders/history/${loggedInCustomer.email}`);
+        const data = await res.json();
+        if (data.success) {
+          setMyOrders(data.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch order history:", error);
+      } finally {
+        setIsLoadingMyOrders(false);
+      }
+    };
+
+    fetchMyOrders();
+  }, [loggedInCustomer, isAuthOpen]);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -163,7 +189,6 @@ function Storefront({ isDark, setIsDark }) {
         localStorage.setItem('customerData', JSON.stringify(data.customer));
         setLoggedInCustomer(data.customer);
         setCustomer({ name: data.customer.name, phone: data.customer.phone || '', address: data.customer.address || '', notes: '' });
-        setIsAuthOpen(false);
         setAuthData({ name: '', email: '', password: '', phone: '', address: '' });
       } else {
         alert(data.message || 'Authentication failed');
@@ -179,6 +204,7 @@ function Storefront({ isDark, setIsDark }) {
     localStorage.removeItem('customerToken');
     localStorage.removeItem('customerData');
     setLoggedInCustomer(null);
+    setMyOrders([]);
     setCustomer({ name: '', phone: '', address: '', notes: '' });
     setIsAuthOpen(false);
   };
@@ -243,8 +269,9 @@ function Storefront({ isDark, setIsDark }) {
       ? `${customer.notes} ${addOnsSummary ? `|| Add-ons: ${addOnsSummary}` : ''}`
       : (addOnsSummary ? `Add-ons: ${addOnsSummary}` : '');
 
+    // LINK ORDER TO CUSTOMER EMAIL FOR HISTORY
     const orderPayload = {
-      customer: { ...customer, notes: finalNotes },
+      customer: { ...customer, email: loggedInCustomer?.email || '', notes: finalNotes },
       items: cart.map(item => ({ 
         menuItem: item.id, 
         quantity: item.qty, 
@@ -576,7 +603,7 @@ function Storefront({ isDark, setIsDark }) {
           </div>
         </section>
 
-        {/* --- AUTHENTICATION DRAWER --- */}
+        {/* --- AUTHENTICATION & PROFILE DRAWER --- */}
         <AnimatePresence>
           {isAuthOpen && (
             <>
@@ -591,13 +618,47 @@ function Storefront({ isDark, setIsDark }) {
 
                 <div className="flex-1 overflow-y-auto p-8">
                   {loggedInCustomer ? (
-                    <div className="space-y-6">
+                    <div className="space-y-8">
                       <div className={`p-6 rounded-2xl ${theme.cardBg} border ${theme.borderSubtle}`}>
                         <div className="w-16 h-16 bg-brand-orange/20 text-brand-orange rounded-full flex items-center justify-center mb-4"><User className="w-8 h-8"/></div>
                         <h3 className={`text-xl font-bold uppercase ${theme.heading}`}>{loggedInCustomer.name}</h3>
                         <p className={`${theme.textMuted} text-sm mt-1`}>{loggedInCustomer.email}</p>
                         <p className={`${theme.textMuted} text-sm mt-1`}>{loggedInCustomer.phone}</p>
                       </div>
+
+                      {/* ORDER HISTORY SECTION */}
+                      <div>
+                        <h3 className={`text-lg font-black uppercase tracking-tighter mb-4 ${theme.heading}`}>Order History</h3>
+                        {isLoadingMyOrders ? (
+                          <div className="flex justify-center py-4"><Loader2 className="w-6 h-6 animate-spin text-brand-orange" /></div>
+                        ) : myOrders.length === 0 ? (
+                          <div className={`p-4 text-center ${theme.textMuted} font-mono text-[10px] uppercase tracking-widest border ${theme.borderSubtle} rounded-xl`}>No past orders found.</div>
+                        ) : (
+                          <div className="space-y-4">
+                            {myOrders.map(order => (
+                              <div key={order._id} className={`p-4 rounded-xl border ${theme.borderSubtle} ${theme.cardBg}`}>
+                                <div className="flex justify-between items-start mb-2">
+                                  <div>
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${order.status === 'Completed' ? 'bg-green-500/20 text-green-500' : order.status === 'Cancelled' ? 'bg-red-500/20 text-red-500' : 'bg-brand-orange/20 text-brand-orange'}`}>
+                                      {order.status.replace('_', ' ')}
+                                    </span>
+                                    <p className={`text-xs ${theme.textMutedLight} mt-2`}>
+                                      {new Date(order.createdAt).toLocaleDateString()} • {new Date(order.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                    </p>
+                                  </div>
+                                  <span className="font-bold text-brand-orange text-sm">₦{order.pricing?.total.toLocaleString()}</span>
+                                </div>
+                                <div className={`mt-3 pt-3 border-t ${theme.borderSubtle}`}>
+                                  {order.items.map((item, i) => (
+                                    <p key={i} className={`text-xs ${theme.textMuted} mb-1`}><span className="font-bold text-brand-orange">{item.quantity}x</span> {item.menuItem?.name || 'Meal Item'}</p>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
                       <button onClick={handleCustomerLogout} className="w-full py-4 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white font-black uppercase tracking-widest text-xs transition-colors rounded-xl flex items-center justify-center gap-2">
                         <LogOut className="w-4 h-4"/> Sign Out
                       </button>
@@ -762,7 +823,7 @@ function Storefront({ isDark, setIsDark }) {
                     <div className="flex-1 overflow-y-auto p-8">
                       {!loggedInCustomer && (
                         <div className={`mb-8 p-4 border border-brand-orange/30 bg-brand-orange/5 rounded-xl`}>
-                          <p className={`text-xs ${theme.text} font-light`}>Want to checkout faster next time? <button onClick={() => {setIsCheckoutOpen(false); setAuthMode('register'); setIsAuthOpen(true);}} className="text-brand-orange font-bold uppercase tracking-widest text-[10px] border-b border-brand-orange ml-1 hover:opacity-70">Create an account</button></p>
+                          <p className={`text-xs ${theme.text} font-light`}>Want to checkout faster next time? <button type="button" onClick={() => {setIsCheckoutOpen(false); setAuthMode('register'); setIsAuthOpen(true);}} className="text-brand-orange font-bold uppercase tracking-widest text-[10px] border-b border-brand-orange ml-1 hover:opacity-70">Create an account</button></p>
                         </div>
                       )}
                       <form id="checkout-form" onSubmit={handleCheckoutSubmit} className="space-y-6">
