@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, ListOrdered, UtensilsCrossed, Settings, 
   Clock, DollarSign, Plus, CheckCircle2, XCircle, Loader2, Bell, X, ImagePlus, ChevronRight, LogOut, Trash2, Shield
 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('orders');
@@ -32,6 +33,62 @@ export default function AdminDashboard() {
     confirmPassword: ''
   });
   const [isUpdatingSettings, setIsUpdatingSettings] = useState(false);
+
+  // --- LIVE REVENUE CALCULATION ---
+  const { chartData, todaysRevenue } = useMemo(() => {
+    const last7Days = [...Array(7)].map((_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i)); 
+      return {
+        dateStr: d.toISOString().split('T')[0], 
+        name: d.toLocaleDateString('en-US', { weekday: 'short' }), 
+        revenue: 0
+      };
+    });
+
+    orders.forEach(order => {
+      if (order.status === 'Cancelled') return; 
+      if (!order.createdAt) return;
+      
+      const orderDateStr = new Date(order.createdAt).toISOString().split('T')[0];
+      const dayIndex = last7Days.findIndex(day => day.dateStr === orderDateStr);
+      
+      if (dayIndex !== -1 && order.pricing?.total) {
+        last7Days[dayIndex].revenue += order.pricing.total;
+      }
+    });
+
+    return {
+      chartData: last7Days,
+      todaysRevenue: last7Days[6].revenue
+    };
+  }, [orders]);
+
+  // --- CUSTOMER INSIGHTS LOGIC ---
+  const [customerInsight, setCustomerInsight] = useState(null);
+
+  const handleOpenCustomerInsight = (phone) => {
+    const history = orders.filter(o => o.customer.phone === phone);
+    
+    const totalSpent = history.reduce((sum, order) => {
+      if (order.status !== 'Cancelled') {
+        return sum + (order.pricing?.total || 0);
+      }
+      return sum;
+    }, 0);
+
+    // Sort by newest first
+    const sortedHistory = [...history].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    setCustomerInsight({
+      name: history[0]?.customer.name || 'Unknown',
+      phone: phone,
+      address: history[0]?.customer.address || 'No address',
+      orderCount: history.length,
+      totalSpent: totalSpent,
+      recentOrders: sortedHistory.slice(0, 5) 
+    });
+  };
 
   // AUTH GUARD
   const token = localStorage.getItem('adminToken');
@@ -176,7 +233,6 @@ export default function AdminDashboard() {
   const handleUpdateCredentials = async (e) => {
     e.preventDefault();
     
-    // Basic validation
     if (!settingsData.currentPassword) {
       return alert("Current password is required to make changes.");
     }
@@ -187,7 +243,6 @@ export default function AdminDashboard() {
     setIsUpdatingSettings(true);
 
     try {
-      // You will need to create this route on your backend
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/auth/update-credentials`, {
         method: 'PUT',
         headers: { 
@@ -205,7 +260,7 @@ export default function AdminDashboard() {
       
       if (data.success) {
         alert("Credentials updated successfully! Please log in again with your new credentials.");
-        handleLogout(); // Force logout so they use the new credentials
+        handleLogout(); 
       } else {
         alert(data.message || "Failed to update credentials.");
       }
@@ -229,7 +284,6 @@ export default function AdminDashboard() {
           <SidebarButton icon={<LayoutDashboard />} label="Overview" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
           <SidebarButton icon={<ListOrdered />} label="Live Orders" active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} badge={orders.filter(o => o.status === 'Pending').length} />
           <SidebarButton icon={<UtensilsCrossed />} label="Menu Manager" active={activeTab === 'menu'} onClick={() => setActiveTab('menu')} />
-          {/* NEW SETTINGS TAB */}
           <SidebarButton icon={<Settings />} label="Settings" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} />
         </nav>
         <div onClick={handleLogout} className="p-4 border-t border-white/5 text-red-500 text-sm flex items-center gap-2 hover:bg-red-500/10 cursor-pointer transition-colors"><LogOut className="w-4 h-4" /> Secure Logout</div>
@@ -248,11 +302,52 @@ export default function AdminDashboard() {
             
             {activeTab === 'overview' && (
               <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
+                
+                {/* DYNAMIC STAT CARDS */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <StatCard icon={<DollarSign/>} title="Today's Revenue" value="₦145,500" trend="+12.5%" />
-                  <StatCard icon={<ListOrdered/>} title="Active Orders" value={orders.length} trend="Live" good />
-                  <StatCard icon={<Clock/>} title="Avg. Prep Time" value="22 mins" trend="-3 mins" good />
+                  <StatCard 
+                    icon={<DollarSign/>} 
+                    title="Today's Revenue" 
+                    value={`₦${todaysRevenue.toLocaleString()}`} 
+                    trend="Live" 
+                    good 
+                  />
+                  <StatCard 
+                    icon={<ListOrdered/>} 
+                    title="Active Orders" 
+                    value={orders.filter(o => o.status !== 'Completed' && o.status !== 'Cancelled').length} 
+                    trend="Live" 
+                    good 
+                  />
+                  <StatCard 
+                    icon={<Clock/>} 
+                    title="Total Orders" 
+                    value={orders.length} 
+                    trend="All Time" 
+                    good 
+                  />
                 </div>
+
+                {/* LIVE REVENUE CHART */}
+                <div className="bg-matte border border-white/5 rounded-2xl p-8 shadow-xl">
+                  <h3 className="text-lg font-bold mb-8">7-Day Revenue Trend</h3>
+                  <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                        <XAxis dataKey="name" stroke="#666" />
+                        <YAxis stroke="#666" />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} 
+                          itemStyle={{ color: '#ea580c', fontWeight: 'bold' }}
+                          formatter={(value) => [`₦${value.toLocaleString()}`, 'Revenue']}
+                        />
+                        <Bar dataKey="revenue" fill="#ea580c" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
               </motion.div>
             )}
 
@@ -264,17 +359,35 @@ export default function AdminDashboard() {
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <OrderColumn title="New Orders" count={orders.filter(o => o.status === 'Pending').length}>
                       {orders.filter(o => o.status === 'Pending').map(order => (
-                        <OrderCard key={order._id} order={order} onAccept={() => updateOrderStatus(order._id, 'Preparing')} onReject={() => updateOrderStatus(order._id, 'Cancelled')} />
+                        <OrderCard 
+                          key={order._id} 
+                          order={order} 
+                          onAccept={() => updateOrderStatus(order._id, 'Preparing')} 
+                          onReject={() => updateOrderStatus(order._id, 'Cancelled')} 
+                          onOpenInsight={handleOpenCustomerInsight}
+                        />
                       ))}
                     </OrderColumn>
                     <OrderColumn title="In Kitchen" count={orders.filter(o => o.status === 'Preparing').length}>
                       {orders.filter(o => o.status === 'Preparing').map(order => (
-                        <OrderCard key={order._id} order={order} onAction={() => updateOrderStatus(order._id, 'Out_For_Delivery')} actionLabel="Mark as Dispatched" />
+                        <OrderCard 
+                          key={order._id} 
+                          order={order} 
+                          onAction={() => updateOrderStatus(order._id, 'Out_For_Delivery')} 
+                          actionLabel="Mark as Dispatched" 
+                          onOpenInsight={handleOpenCustomerInsight}
+                        />
                       ))}
                     </OrderColumn>
                     <OrderColumn title="Dispatched" count={orders.filter(o => o.status === 'Out_For_Delivery').length}>
                       {orders.filter(o => o.status === 'Out_For_Delivery').map(order => (
-                        <OrderCard key={order._id} order={order} onAction={() => updateOrderStatus(order._id, 'Completed')} actionLabel="Mark Completed" />
+                        <OrderCard 
+                          key={order._id} 
+                          order={order} 
+                          onAction={() => updateOrderStatus(order._id, 'Completed')} 
+                          actionLabel="Mark Completed" 
+                          onOpenInsight={handleOpenCustomerInsight}
+                        />
                       ))}
                     </OrderColumn>
                   </div>
@@ -307,7 +420,6 @@ export default function AdminDashboard() {
               </motion.div>
             )}
 
-            {/* --- NEW SETTINGS TAB --- */}
             {activeTab === 'settings' && (
               <motion.div key="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="max-w-2xl">
                 <div className="bg-matte border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
@@ -320,7 +432,6 @@ export default function AdminDashboard() {
                     <p className="text-sm text-gray-400 mb-8 font-light">Update your admin login credentials here. You must provide your current password to save any changes. If you successfully change your credentials, you will be logged out automatically.</p>
                     
                     <form id="settings-form" onSubmit={handleUpdateCredentials} className="space-y-6">
-                      {/* Current Password (Required for security) */}
                       <div>
                         <label className="block text-xs font-mono tracking-widest uppercase text-gray-400 mb-2">Current Password *</label>
                         <input 
@@ -393,6 +504,7 @@ export default function AdminDashboard() {
         </div>
       </main>
 
+      {/* --- ADD MEAL MODAL --- */}
       <AnimatePresence>
         {isAddMealOpen && (
           <div className="fixed inset-0 z-50 flex justify-end">
@@ -438,6 +550,52 @@ export default function AdminDashboard() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* --- CUSTOMER INSIGHT MODAL --- */}
+      <AnimatePresence>
+        {customerInsight && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCustomerInsight(null)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative w-full max-w-md bg-charcoal border border-white/10 shadow-2xl rounded-2xl overflow-hidden flex flex-col max-h-[85vh]">
+              
+              <div className="p-6 border-b border-white/10 flex justify-between items-start bg-matte/50">
+                <div>
+                  <h2 className="text-2xl font-black uppercase tracking-tighter text-white">{customerInsight.name}</h2>
+                  <p className="text-brand-orange font-mono text-xs mt-1">{customerInsight.phone}</p>
+                </div>
+                <button onClick={() => setCustomerInsight(null)} className="p-2 rounded-full bg-white/5 hover:bg-white/10"><X className="w-5 h-5" /></button>
+              </div>
+
+              <div className="p-6 grid grid-cols-2 gap-4 border-b border-white/10 bg-charcoal">
+                <div className="bg-matte p-4 rounded-xl border border-white/5">
+                  <p className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Total Orders</p>
+                  <p className="text-2xl font-bold text-white">{customerInsight.orderCount}</p>
+                </div>
+                <div className="bg-matte p-4 rounded-xl border border-white/5">
+                  <p className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Lifetime Value</p>
+                  <p className="text-xl font-bold text-brand-orange">₦{customerInsight.totalSpent.toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 bg-charcoal">
+                <h3 className="text-xs font-mono uppercase tracking-widest text-gray-400 mb-4">Recent Order History</h3>
+                <div className="space-y-3">
+                  {customerInsight.recentOrders.map((order, idx) => (
+                    <div key={idx} className="p-3 bg-matte border border-white/5 rounded-lg flex justify-between items-center">
+                      <div>
+                        <p className="text-sm font-medium text-white">{order.time}</p>
+                        <p className="text-[10px] text-gray-500 mt-0.5">{order.status.replace('_', ' ')}</p>
+                      </div>
+                      <span className="font-bold text-brand-orange text-sm">₦{order.pricing.total.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -471,7 +629,7 @@ function OrderColumn({ title, count, children }) {
   );
 }
 
-function OrderCard({ order, onAccept, onReject, onAction, actionLabel }) {
+function OrderCard({ order, onAccept, onReject, onAction, actionLabel, onOpenInsight }) {
   return (
     <motion.div layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-charcoal p-4 rounded-xl border border-white/10 shadow-lg hover:border-brand-orange/50 transition-colors">
       <div className="flex justify-between items-start mb-3">
@@ -479,8 +637,14 @@ function OrderCard({ order, onAccept, onReject, onAction, actionLabel }) {
         <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${order.payment.status === 'Paid' ? 'bg-green-500/20 text-green-500 border border-green-500/30' : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30'}`}>{order.payment.method}</span>
       </div>
       <div className="mb-4">
-        <p className="text-sm font-medium">{order.customer.name}</p>
-        <p className="text-xs text-gray-400 mt-1">{order.customer.address}</p>
+        {/* Clickable Customer Name */}
+        <button 
+          onClick={() => onOpenInsight(order.customer.phone)} 
+          className="text-sm font-bold text-brand-orange hover:text-white transition-colors flex items-center gap-1 text-left"
+        >
+          {order.customer.name}
+        </button>
+        <p className="text-xs text-gray-400 mt-1">{order.customer.phone} • {order.customer.address}</p>
         <div className="mt-3 pt-3 border-t border-white/5">{order.items.map((item, i) => (<p key={i} className="text-xs text-gray-300 mb-1"><span className="text-brand-orange font-bold mr-1">{item.quantity}x</span> {item.menuItem?.name || 'Meal Item'}</p>))}</div>
       </div>
       <div className="flex justify-between items-center pt-3 border-t border-white/10">
