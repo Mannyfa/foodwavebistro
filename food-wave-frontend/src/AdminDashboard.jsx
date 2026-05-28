@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, ListOrdered, UtensilsCrossed, Settings, 
-  Clock, DollarSign, Plus, CheckCircle2, XCircle, Loader2, Bell, X, ImagePlus, ChevronRight, LogOut, Trash2, Shield, Menu
+  Clock, DollarSign, Plus, CheckCircle2, XCircle, Loader2, X, 
+  ImagePlus, ChevronRight, ChevronLeft, LogOut, Trash2, Shield, Menu, Edit
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -15,6 +16,10 @@ export default function AdminDashboard() {
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [menuItems, setMenuItems] = useState([]);
   const [isLoadingMenu, setIsLoadingMenu] = useState(true);
+
+  // PAGINATION STATE
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // ADD-ONS STATE
   const [availableAddOns] = useState([
@@ -78,7 +83,6 @@ export default function AdminDashboard() {
       return sum;
     }, 0);
 
-    // Sort by newest first
     const sortedHistory = [...history].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     setCustomerInsight({
@@ -97,14 +101,26 @@ export default function AdminDashboard() {
     if (!token) window.location.href = '/admin/login';
   }, [token]);
 
-  // ADD MEAL MODAL STATES
+  // MEAL MODAL STATES
   const [isAddMealOpen, setIsAddMealOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingMealId, setEditingMealId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [newMeal, setNewMeal] = useState({
-    name: '', description: '', price: '', category: 'Rice Meals', preparationTime: '', tags: ''
+    name: '', description: '', price: '', category: 'Rice Meals', preparationTime: '', tags: '', discountPercentage: 0
   });
+
+  const resetModal = () => {
+    setNewMeal({ name: '', description: '', price: '', category: 'Rice Meals', preparationTime: '', tags: '', discountPercentage: 0 });
+    setSelectedAddOns([]);
+    setImageFile(null);
+    setImagePreview(null);
+    setIsEditMode(false);
+    setEditingMealId(null);
+    setIsAddMealOpen(false);
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
@@ -176,6 +192,24 @@ export default function AdminDashboard() {
     } catch (error) { alert("Failed to update availability."); }
   };
 
+  const handleEditClick = (item) => {
+    setNewMeal({
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      category: item.category,
+      preparationTime: item.preparationTime,
+      tags: item.tags || '',
+      discountPercentage: item.discountPercentage || 0
+    });
+    setSelectedAddOns(item.addOns || []);
+    setImagePreview(item.image?.url || item.image);
+    setImageFile(null); 
+    setIsEditMode(true);
+    setEditingMealId(item._id);
+    setIsAddMealOpen(true);
+  };
+
   const deleteMenuItem = async (id) => {
     if (!window.confirm("Are you sure you want to permanently delete this meal?")) return;
     setMenuItems(prev => prev.filter(m => m._id !== id));
@@ -197,7 +231,7 @@ export default function AdminDashboard() {
   
   const handleAddMealSubmit = async (e) => {
     e.preventDefault();
-    if (!imageFile) { alert("Please select an image file first."); return; }
+    if (!isEditMode && !imageFile) { alert("Please select an image file first."); return; }
     setIsSubmitting(true);
 
     const formData = new FormData();
@@ -207,24 +241,30 @@ export default function AdminDashboard() {
     formData.append('category', newMeal.category);
     formData.append('preparationTime', newMeal.preparationTime);
     formData.append('tags', newMeal.tags);
-    formData.append('image', imageFile);
+    formData.append('discountPercentage', newMeal.discountPercentage);
+    if (imageFile) formData.append('image', imageFile);
     formData.append('addOns', JSON.stringify(selectedAddOns));
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/menu`, {
-        method: 'POST',
+      const url = isEditMode 
+        ? `${import.meta.env.VITE_API_URL}/api/v1/menu/${editingMealId}` 
+        : `${import.meta.env.VITE_API_URL}/api/v1/menu`;
+      const method = isEditMode ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
       });
 
       const data = await response.json();
       if (data.success) {
-        setMenuItems([data.data, ...menuItems]);
-        setNewMeal({ name: '', description: '', price: '', category: 'Rice Meals', preparationTime: '', tags: '' });
-        setSelectedAddOns([]);
-        setImageFile(null);
-        setImagePreview(null);
-        setIsAddMealOpen(false);
+        if (isEditMode) {
+          setMenuItems(menuItems.map(item => item._id === editingMealId ? data.data : item));
+        } else {
+          setMenuItems([data.data, ...menuItems]);
+        }
+        resetModal();
       } else { alert(`Error: ${data.message}`); }
     } catch (error) { alert("Network error. Is your backend running?"); } 
     finally { setIsSubmitting(false); }
@@ -272,6 +312,12 @@ export default function AdminDashboard() {
       setIsUpdatingSettings(false);
     }
   };
+
+  // PAGINATION LOGIC
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentMenuItems = menuItems.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(menuItems.length / itemsPerPage);
 
   if (!token) return null; 
 
@@ -441,24 +487,63 @@ export default function AdminDashboard() {
               <motion.div key="menu" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="bg-matte border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
                 <div className="p-4 md:p-6 border-b border-white/5 flex justify-between items-center bg-charcoal/50">
                   <h3 className="text-lg font-bold">Menu Items</h3>
-                  <button onClick={() => setIsAddMealOpen(true)} className="px-4 py-2 bg-brand-orange hover:bg-orange-600 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium shadow-lg shadow-brand-orange/20"><Plus className="w-4 h-4" /> Add New Meal</button>
+                  <button onClick={() => { resetModal(); setIsAddMealOpen(true); }} className="px-4 py-2 bg-brand-orange hover:bg-orange-600 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium shadow-lg shadow-brand-orange/20"><Plus className="w-4 h-4" /> Add New Meal</button>
                 </div>
+                
                 {isLoadingMenu ? <div className="p-12 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-brand-orange" /></div> : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse min-w-[600px]">
-                      <thead><tr className="bg-white/5 text-gray-400 text-sm"><th className="p-4 font-medium">Item Name</th><th className="p-4 font-medium">Category</th><th className="p-4 font-medium">Price</th><th className="p-4 font-medium">Status</th><th className="p-4 font-medium">Actions</th></tr></thead>
-                      <tbody>
-                        {menuItems.map(item => (
-                          <tr key={item._id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                            <td className="p-4 font-medium flex items-center gap-3"><img src={item.image?.url || item.image} alt="" className="w-10 h-10 rounded-md object-cover border border-white/10" />{item.name}</td>
-                            <td className="p-4 text-gray-400 text-sm">{item.category}</td>
-                            <td className="p-4 text-brand-orange font-medium">₦{item.price?.toLocaleString()}</td>
-                            <td className="p-4"><button onClick={() => toggleMenuAvailability(item._id, item.isAvailable)} className={`px-3 py-1 rounded-full text-[10px] uppercase tracking-wider font-bold transition-colors ${item.isAvailable ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20' : 'bg-red-500/10 text-red-500 hover:bg-red-500/20'}`}>{item.isAvailable ? 'Available' : 'Sold Out'}</button></td>
-                            <td className="p-4"><button onClick={() => deleteMenuItem(item._id)} className="p-2 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"><Trash2 className="w-4 h-4" /></button></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="flex flex-col">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse min-w-[600px]">
+                        <thead><tr className="bg-white/5 text-gray-400 text-sm"><th className="p-4 font-medium">Item Name</th><th className="p-4 font-medium">Category</th><th className="p-4 font-medium">Price</th><th className="p-4 font-medium">Status</th><th className="p-4 font-medium">Actions</th></tr></thead>
+                        <tbody>
+                          {currentMenuItems.map(item => {
+                            const hasDiscount = item.discountPercentage > 0;
+                            const discountedPrice = hasDiscount ? item.price - (item.price * (item.discountPercentage / 100)) : item.price;
+                            
+                            return (
+                              <tr key={item._id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                                <td className="p-4 font-medium flex items-center gap-3"><img src={item.image?.url || item.image} alt="" className="w-10 h-10 rounded-md object-cover border border-white/10" />{item.name}</td>
+                                <td className="p-4 text-gray-400 text-sm">{item.category}</td>
+                                
+                                {/* Dynamic Pricing Column */}
+                                <td className="p-4">
+                                  {hasDiscount ? (
+                                    <div className="flex flex-col">
+                                      <span className="text-brand-orange font-bold">₦{discountedPrice.toLocaleString()}</span>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-gray-500 line-through text-xs">₦{item.price.toLocaleString()}</span>
+                                        <span className="text-[10px] bg-brand-orange/20 text-brand-orange px-1 rounded font-bold">-{item.discountPercentage}%</span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <span className="text-brand-orange font-medium">₦{item.price?.toLocaleString()}</span>
+                                  )}
+                                </td>
+                                
+                                <td className="p-4"><button onClick={() => toggleMenuAvailability(item._id, item.isAvailable)} className={`px-3 py-1 rounded-full text-[10px] uppercase tracking-wider font-bold transition-colors ${item.isAvailable ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20' : 'bg-red-500/10 text-red-500 hover:bg-red-500/20'}`}>{item.isAvailable ? 'Available' : 'Sold Out'}</button></td>
+                                
+                                <td className="p-4 flex items-center gap-2">
+                                  <button onClick={() => handleEditClick(item)} className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-md transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
+                                  <button onClick={() => deleteMenuItem(item._id)} className="p-2 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    {/* PAGINATION CONTROLS */}
+                    {menuItems.length > 0 && (
+                      <div className="p-4 border-t border-white/5 flex justify-between items-center bg-charcoal/30">
+                        <span className="text-xs text-gray-400">Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, menuItems.length)} of {menuItems.length} entries</span>
+                        <div className="flex gap-2">
+                          <button disabled={currentPage === 1} onClick={() => setCurrentPage(prev => prev - 1)} className="p-1 rounded-md bg-white/5 text-gray-400 hover:text-white disabled:opacity-30 transition-colors"><ChevronLeft className="w-4 h-4"/></button>
+                          <span className="text-xs text-gray-400 flex items-center px-2">Page {currentPage} of {totalPages}</span>
+                          <button disabled={currentPage >= totalPages} onClick={() => setCurrentPage(prev => prev + 1)} className="p-1 rounded-md bg-white/5 text-gray-400 hover:text-white disabled:opacity-30 transition-colors"><ChevronRight className="w-4 h-4"/></button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </motion.div>
@@ -548,34 +633,39 @@ export default function AdminDashboard() {
         </div>
       </main>
 
-      {/* --- ADD MEAL MODAL --- */}
+      {/* --- ADD/EDIT MEAL MODAL --- */}
       <AnimatePresence>
         {isAddMealOpen && (
           <div className="fixed inset-0 z-[110] flex justify-end">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsAddMealOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={resetModal} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="relative w-full sm:w-[500px] bg-charcoal border-l border-white/10 shadow-2xl flex flex-col h-full">
-              <div className="p-6 border-b border-white/10 flex justify-between items-center bg-matte/50"><h2 className="text-xl font-bold">Add New Meal</h2><button onClick={() => setIsAddMealOpen(false)} className="p-2 rounded-full bg-white/5 hover:bg-white/10"><X className="w-5 h-5" /></button></div>
+              <div className="p-6 border-b border-white/10 flex justify-between items-center bg-matte/50">
+                <h2 className="text-xl font-bold">{isEditMode ? 'Edit Meal' : 'Add New Meal'}</h2>
+                <button onClick={resetModal} className="p-2 rounded-full bg-white/5 hover:bg-white/10"><X className="w-5 h-5" /></button>
+              </div>
               <div className="flex-1 overflow-y-auto p-6">
                 <form id="add-meal-form" onSubmit={handleAddMealSubmit} className="space-y-5">
                   <div>
                     <label className="block text-sm font-medium text-gray-400 mb-1.5">Meal Image</label>
                     <div className="relative group cursor-pointer">
-                      <input required type="file" accept="image/*" onChange={handleImageChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                      <input type="file" accept="image/*" onChange={handleImageChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
                       <div className={`h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center transition-colors overflow-hidden ${imagePreview ? 'border-brand-orange bg-matte' : 'border-white/20 bg-white/5 hover:border-brand-orange/50 hover:bg-white/10'}`}>
                         {imagePreview ? <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" /> : <><ImagePlus className="w-8 h-8 text-gray-400 mb-2" /><span className="text-sm font-medium text-gray-400 group-hover:text-brand-orange transition-colors">Tap to browse your device</span></>}
                       </div>
                     </div>
+                    {isEditMode && <p className="text-[10px] text-gray-500 mt-1">Leave empty to keep current image.</p>}
                   </div>
                   <div><label className="block text-sm font-medium text-gray-400 mb-1.5">Meal Name</label><input required type="text" value={newMeal.name} onChange={e => setNewMeal({...newMeal, name: e.target.value})} className="w-full bg-matte border border-white/10 rounded-xl px-4 py-3 text-white focus:border-brand-orange outline-none" /></div>
                   <div><label className="block text-sm font-medium text-gray-400 mb-1.5">Description</label><textarea required rows="2" value={newMeal.description} onChange={e => setNewMeal({...newMeal, description: e.target.value})} className="w-full bg-matte border border-white/10 rounded-xl px-4 py-3 text-white focus:border-brand-orange outline-none resize-none" /></div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div><label className="block text-sm font-medium text-gray-400 mb-1.5">Price (₦)</label><input required type="number" value={newMeal.price} onChange={e => setNewMeal({...newMeal, price: e.target.value})} className="w-full bg-matte border border-white/10 rounded-xl px-4 py-3 text-white focus:border-brand-orange outline-none" /></div>
-                    <div><label className="block text-sm font-medium text-gray-400 mb-1.5">Category</label><select value={newMeal.category} onChange={e => setNewMeal({...newMeal, category: e.target.value})} className="w-full bg-matte border border-white/10 rounded-xl px-4 py-3 text-white outline-none"><option>Rice Meals</option><option>Pasta</option><option>Grills</option><option>Small Chops</option><option>Drinks</option><option>Specials</option></select></div>
+                    <div><label className="block text-sm font-medium text-gray-400 mb-1.5">Original Price (₦)</label><input required type="number" value={newMeal.price} onChange={e => setNewMeal({...newMeal, price: e.target.value})} className="w-full bg-matte border border-white/10 rounded-xl px-4 py-3 text-white focus:border-brand-orange outline-none" /></div>
+                    <div><label className="block text-sm font-medium text-brand-orange mb-1.5">Discount (%)</label><input type="number" min="0" max="100" placeholder="e.g. 10" value={newMeal.discountPercentage} onChange={e => setNewMeal({...newMeal, discountPercentage: e.target.value})} className="w-full bg-brand-orange/5 border border-brand-orange/30 rounded-xl px-4 py-3 text-brand-orange font-bold focus:border-brand-orange outline-none" /></div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
+                    <div><label className="block text-sm font-medium text-gray-400 mb-1.5">Category</label><select value={newMeal.category} onChange={e => setNewMeal({...newMeal, category: e.target.value})} className="w-full bg-matte border border-white/10 rounded-xl px-4 py-3 text-white outline-none"><option>Rice Meals</option><option>Pasta</option><option>Grills</option><option>Small Chops</option><option>Drinks</option><option>Specials</option></select></div>
                     <div><label className="block text-sm font-medium text-gray-400 mb-1.5">Prep Time</label><input required type="text" value={newMeal.preparationTime} onChange={e => setNewMeal({...newMeal, preparationTime: e.target.value})} className="w-full bg-matte border border-white/10 rounded-xl px-4 py-3 text-white focus:border-brand-orange outline-none" /></div>
-                    <div><label className="block text-sm font-medium text-gray-400 mb-1.5">Tags (Comma separated)</label><input type="text" value={newMeal.tags} onChange={e => setNewMeal({...newMeal, tags: e.target.value})} className="w-full bg-matte border border-white/10 rounded-xl px-4 py-3 text-white focus:border-brand-orange outline-none" /></div>
                   </div>
+                  <div><label className="block text-sm font-medium text-gray-400 mb-1.5">Tags (Comma separated)</label><input type="text" value={newMeal.tags} onChange={e => setNewMeal({...newMeal, tags: e.target.value})} className="w-full bg-matte border border-white/10 rounded-xl px-4 py-3 text-white focus:border-brand-orange outline-none" /></div>
                   <div>
                     <label className="block text-sm font-medium text-gray-400 mb-2">Available Add-ons</label>
                     <div className="grid grid-cols-2 gap-2">
@@ -589,7 +679,7 @@ export default function AdminDashboard() {
                   </div>
                 </form>
               </div>
-              <div className="p-6 bg-matte border-t border-white/10 mt-auto"><button form="add-meal-form" type="submit" disabled={isSubmitting} className="w-full py-4 rounded-xl bg-brand-orange text-white font-bold">{isSubmitting ? 'Uploading...' : 'Publish Meal'}</button></div>
+              <div className="p-6 bg-matte border-t border-white/10 mt-auto"><button form="add-meal-form" type="submit" disabled={isSubmitting} className="w-full py-4 rounded-xl bg-brand-orange text-white font-bold">{isSubmitting ? 'Processing...' : isEditMode ? 'Save Changes' : 'Publish Meal'}</button></div>
             </motion.div>
           </div>
         )}
