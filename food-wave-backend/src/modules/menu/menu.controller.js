@@ -8,7 +8,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// @desc    Get all menu items (with optional category filter)
+// @desc    Get all menu items
 // @route   GET /api/v1/menu
 // @access  Public
 exports.getMenuItems = async (req, res) => {
@@ -33,32 +33,27 @@ exports.getMenuItems = async (req, res) => {
 // @desc    Create a new menu item
 // @route   POST /api/v1/menu
 // @access  Private (Admin only)
-// @desc    Create a new menu item
-// @route   POST /api/v1/menu
-// @access  Private (Admin only)
 exports.createMenuItem = async (req, res) => {
   try {
-    // 1. When using multer-storage-cloudinary, req.file.path IS the Cloudinary URL
     if (!req.file || !req.file.path) {
       return res.status(400).json({ success: false, message: 'Please upload a meal image.' });
     }
 
-    // 2. Format the data
     const newItemData = {
       name: req.body.name,
       description: req.body.description,
       price: Number(req.body.price),
+      discountPercentage: Number(req.body.discountPercentage) || 0, // NEW: Discount 
       category: req.body.category,
-      // Handle preparationTime safely (in case user types "25 min" or just "25")
       preparationTime: Number(String(req.body.preparationTime).replace(/\D/g, '')),
       tags: req.body.tags ? req.body.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
+      addOns: req.body.addOns ? JSON.parse(req.body.addOns) : [], // FIXED: Parse stringified array
       image: { 
-        url: req.file.path, // Automatically provided by CloudinaryStorage
-        public_id: req.file.filename // Automatically provided by CloudinaryStorage
+        url: req.file.path, 
+        public_id: req.file.filename 
       }
     };
 
-    // 3. Save to database
     const newItem = await MenuItem.create(newItemData);
 
     res.status(201).json({
@@ -67,14 +62,55 @@ exports.createMenuItem = async (req, res) => {
     });
   } catch (error) {
     console.error("Upload error:", error);
-    // Use the global error handler via next()
     if (typeof next !== 'undefined') next(error);
     else res.status(400).json({ success: false, message: error.message });
   }
 };
 
+// @desc    Edit a full menu item (Supports optional new image)
+// @route   PUT /api/v1/menu/:id
+// @access  Private (Admin only)
+exports.editMenuItem = async (req, res) => {
+  try {
+    let item = await MenuItem.findById(req.params.id);
+    if (!item) return res.status(404).json({ success: false, message: 'Item not found' });
 
-// @desc    Update menu item (e.g., toggle availability)
+    // Format updated data
+    const updateData = {
+      name: req.body.name || item.name,
+      description: req.body.description || item.description,
+      price: req.body.price ? Number(req.body.price) : item.price,
+      discountPercentage: req.body.discountPercentage !== undefined ? Number(req.body.discountPercentage) : item.discountPercentage,
+      category: req.body.category || item.category,
+      preparationTime: req.body.preparationTime ? Number(String(req.body.preparationTime).replace(/\D/g, '')) : item.preparationTime,
+      tags: req.body.tags ? req.body.tags.split(',').map(tag => tag.trim()).filter(Boolean) : item.tags,
+      addOns: req.body.addOns ? JSON.parse(req.body.addOns) : item.addOns,
+    };
+
+    // If a new image was uploaded, handle Cloudinary replacement
+    if (req.file && req.file.path) {
+      // Destroy old image to save Cloudinary storage space
+      if (item.image && item.image.public_id) {
+        await cloudinary.uploader.destroy(item.image.public_id);
+      }
+      // Save new image details
+      updateData.image = {
+        url: req.file.path,
+        public_id: req.file.filename
+      };
+    }
+
+    // Apply updates
+    item = await MenuItem.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true });
+
+    res.status(200).json({ success: true, data: item });
+  } catch (error) {
+    console.error("Edit error:", error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Quick Update menu item (Used for "Toggle Availability")
 // @route   PATCH /api/v1/menu/:id
 // @access  Private (Admin)
 exports.updateMenuItem = async (req, res) => {
@@ -97,6 +133,12 @@ exports.deleteMenuItem = async (req, res) => {
   try {
     const item = await MenuItem.findByIdAndDelete(req.params.id);
     if (!item) return res.status(404).json({ success: false, message: 'Item not found' });
+    
+    // Cleanup Cloudinary storage
+    if (item.image && item.image.public_id) {
+      await cloudinary.uploader.destroy(item.image.public_id);
+    }
+
     res.status(200).json({ success: true, data: {} });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
