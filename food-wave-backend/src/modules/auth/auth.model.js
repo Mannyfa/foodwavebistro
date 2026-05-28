@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcryptjs'); // Or 'bcrypt', depending on what you installed
 
 const adminSchema = new mongoose.Schema({
   email: {
@@ -10,28 +10,17 @@ const adminSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true,
-    select: false // Ensures password isn't accidentally returned in queries
+    select: false
   }
 });
 
-// Auto-hash the password before saving it to the database
-adminSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) {
-    return next();
-  }
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
-  next();
-});
-
-// Method to verify passwords during login// Auto-hash the password before saving it to the database
+// Clean async pre-save hook (NO 'next' parameters)
 adminSchema.pre('save', async function() {
   if (!this.isModified('password')) {
-    return; // Notice we removed next()
+    return; 
   }
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
-  // Notice we removed next() at the end here too
 });
 
 adminSchema.methods.matchPassword = async function(enteredPassword) {
