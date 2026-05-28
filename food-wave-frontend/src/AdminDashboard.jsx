@@ -2,12 +2,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, ListOrdered, UtensilsCrossed, Settings, 
-  Clock, DollarSign, Plus, CheckCircle2, XCircle, Loader2, Bell, X, ImagePlus, ChevronRight, LogOut, Trash2, Shield
+  Clock, DollarSign, Plus, CheckCircle2, XCircle, Loader2, Bell, X, ImagePlus, ChevronRight, LogOut, Trash2, Shield, Menu
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('orders');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // LIVE DATA STATES
   const [orders, setOrders] = useState([]);
@@ -276,6 +277,8 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-charcoal text-brand-cream flex font-sans">
+      
+      {/* DESKTOP SIDEBAR */}
       <aside className="w-64 bg-matte border-r border-white/5 flex flex-col hidden md:flex z-10">
         <div className="p-6 border-b border-white/5">
           <div className="text-xl font-bold tracking-tighter">Food Wave <span className="text-brand-orange">Admin.</span></div>
@@ -289,15 +292,54 @@ export default function AdminDashboard() {
         <div onClick={handleLogout} className="p-4 border-t border-white/5 text-red-500 text-sm flex items-center gap-2 hover:bg-red-500/10 cursor-pointer transition-colors"><LogOut className="w-4 h-4" /> Secure Logout</div>
       </aside>
 
+      {/* MOBILE SIDEBAR MODAL */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <div className="fixed inset-0 z-[100] flex md:hidden">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              onClick={() => setIsMobileMenuOpen(false)} 
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+            />
+            <motion.div 
+              initial={{ x: '-100%' }} 
+              animate={{ x: 0 }} 
+              exit={{ x: '-100%' }} 
+              transition={{ type: "spring", damping: 25, stiffness: 200 }} 
+              className="relative w-64 bg-matte border-r border-white/5 flex flex-col h-full shadow-2xl"
+            >
+              <div className="p-6 border-b border-white/5 flex justify-between items-center">
+                <div className="text-xl font-bold tracking-tighter">Food Wave <span className="text-brand-orange">Admin.</span></div>
+                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 -mr-2 text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
+              </div>
+              <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+                <SidebarButton icon={<LayoutDashboard />} label="Overview" active={activeTab === 'overview'} onClick={() => { setActiveTab('overview'); setIsMobileMenuOpen(false); }} />
+                <SidebarButton icon={<ListOrdered />} label="Live Orders" active={activeTab === 'orders'} onClick={() => { setActiveTab('orders'); setIsMobileMenuOpen(false); }} badge={orders.filter(o => o.status === 'Pending').length} />
+                <SidebarButton icon={<UtensilsCrossed />} label="Menu Manager" active={activeTab === 'menu'} onClick={() => { setActiveTab('menu'); setIsMobileMenuOpen(false); }} />
+                <SidebarButton icon={<Settings />} label="Settings" active={activeTab === 'settings'} onClick={() => { setActiveTab('settings'); setIsMobileMenuOpen(false); }} />
+              </nav>
+              <div onClick={handleLogout} className="p-4 border-t border-white/5 text-red-500 text-sm flex items-center gap-2 hover:bg-red-500/10 cursor-pointer transition-colors"><LogOut className="w-4 h-4" /> Secure Logout</div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
-        <header className="h-20 bg-charcoal/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-8 z-10">
-          <h1 className="text-2xl font-bold capitalize">{activeTab.replace('-', ' ')}</h1>
+        <header className="h-20 bg-charcoal/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-4 md:px-8 z-10">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 md:hidden text-gray-400 hover:text-white transition-colors">
+              <Menu className="w-6 h-6" />
+            </button>
+            <h1 className="text-xl md:text-2xl font-bold capitalize">{activeTab.replace('-', ' ')}</h1>
+          </div>
           <div className="flex items-center gap-4">
              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-brand-orange to-brand-gold p-[2px]"><div className="w-full h-full bg-matte rounded-full flex items-center justify-center font-bold text-sm">AD</div></div>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-8 relative z-0">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 relative z-0">
           <AnimatePresence mode="wait">
             
             {activeTab === 'overview' && (
@@ -329,14 +371,14 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* LIVE REVENUE CHART */}
-                <div className="bg-matte border border-white/5 rounded-2xl p-8 shadow-xl">
+                <div className="bg-matte border border-white/5 rounded-2xl p-4 md:p-8 shadow-xl">
                   <h3 className="text-lg font-bold mb-8">7-Day Revenue Trend</h3>
                   <div className="h-[300px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#333" />
                         <XAxis dataKey="name" stroke="#666" />
-                        <YAxis stroke="#666" />
+                        <YAxis stroke="#666" width={60} />
                         <Tooltip 
                           contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} 
                           itemStyle={{ color: '#ea580c', fontWeight: 'bold' }}
@@ -397,25 +439,27 @@ export default function AdminDashboard() {
 
             {activeTab === 'menu' && (
               <motion.div key="menu" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="bg-matte border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
-                <div className="p-6 border-b border-white/5 flex justify-between items-center bg-charcoal/50">
+                <div className="p-4 md:p-6 border-b border-white/5 flex justify-between items-center bg-charcoal/50">
                   <h3 className="text-lg font-bold">Menu Items</h3>
                   <button onClick={() => setIsAddMealOpen(true)} className="px-4 py-2 bg-brand-orange hover:bg-orange-600 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium shadow-lg shadow-brand-orange/20"><Plus className="w-4 h-4" /> Add New Meal</button>
                 </div>
                 {isLoadingMenu ? <div className="p-12 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-brand-orange" /></div> : (
-                  <table className="w-full text-left border-collapse">
-                    <thead><tr className="bg-white/5 text-gray-400 text-sm"><th className="p-4 font-medium">Item Name</th><th className="p-4 font-medium">Category</th><th className="p-4 font-medium">Price</th><th className="p-4 font-medium">Status</th><th className="p-4 font-medium">Actions</th></tr></thead>
-                    <tbody>
-                      {menuItems.map(item => (
-                        <tr key={item._id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                          <td className="p-4 font-medium flex items-center gap-3"><img src={item.image?.url || item.image} alt="" className="w-10 h-10 rounded-md object-cover border border-white/10" />{item.name}</td>
-                          <td className="p-4 text-gray-400 text-sm">{item.category}</td>
-                          <td className="p-4 text-brand-orange font-medium">₦{item.price?.toLocaleString()}</td>
-                          <td className="p-4"><button onClick={() => toggleMenuAvailability(item._id, item.isAvailable)} className={`px-3 py-1 rounded-full text-[10px] uppercase tracking-wider font-bold transition-colors ${item.isAvailable ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20' : 'bg-red-500/10 text-red-500 hover:bg-red-500/20'}`}>{item.isAvailable ? 'Available' : 'Sold Out'}</button></td>
-                          <td className="p-4"><button onClick={() => deleteMenuItem(item._id)} className="p-2 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"><Trash2 className="w-4 h-4" /></button></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[600px]">
+                      <thead><tr className="bg-white/5 text-gray-400 text-sm"><th className="p-4 font-medium">Item Name</th><th className="p-4 font-medium">Category</th><th className="p-4 font-medium">Price</th><th className="p-4 font-medium">Status</th><th className="p-4 font-medium">Actions</th></tr></thead>
+                      <tbody>
+                        {menuItems.map(item => (
+                          <tr key={item._id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                            <td className="p-4 font-medium flex items-center gap-3"><img src={item.image?.url || item.image} alt="" className="w-10 h-10 rounded-md object-cover border border-white/10" />{item.name}</td>
+                            <td className="p-4 text-gray-400 text-sm">{item.category}</td>
+                            <td className="p-4 text-brand-orange font-medium">₦{item.price?.toLocaleString()}</td>
+                            <td className="p-4"><button onClick={() => toggleMenuAvailability(item._id, item.isAvailable)} className={`px-3 py-1 rounded-full text-[10px] uppercase tracking-wider font-bold transition-colors ${item.isAvailable ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20' : 'bg-red-500/10 text-red-500 hover:bg-red-500/20'}`}>{item.isAvailable ? 'Available' : 'Sold Out'}</button></td>
+                            <td className="p-4"><button onClick={() => deleteMenuItem(item._id)} className="p-2 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"><Trash2 className="w-4 h-4" /></button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </motion.div>
             )}
@@ -428,7 +472,7 @@ export default function AdminDashboard() {
                     <h3 className="text-lg font-bold">Security & Credentials</h3>
                   </div>
                   
-                  <div className="p-8">
+                  <div className="p-6 md:p-8">
                     <p className="text-sm text-gray-400 mb-8 font-light">Update your admin login credentials here. You must provide your current password to save any changes. If you successfully change your credentials, you will be logged out automatically.</p>
                     
                     <form id="settings-form" onSubmit={handleUpdateCredentials} className="space-y-6">
@@ -491,7 +535,7 @@ export default function AdminDashboard() {
                       form="settings-form" 
                       type="submit" 
                       disabled={isUpdatingSettings} 
-                      className="px-8 py-3 bg-brand-orange hover:bg-orange-600 text-white rounded-lg font-bold flex items-center gap-2 transition-colors text-sm shadow-lg shadow-brand-orange/20 disabled:opacity-70"
+                      className="w-full md:w-auto px-8 py-3 bg-brand-orange hover:bg-orange-600 text-white rounded-lg font-bold flex items-center justify-center gap-2 transition-colors text-sm shadow-lg shadow-brand-orange/20 disabled:opacity-70"
                     >
                       {isUpdatingSettings ? <><Loader2 className="w-4 h-4 animate-spin" /> Updating...</> : 'Save Changes'}
                     </button>
@@ -507,7 +551,7 @@ export default function AdminDashboard() {
       {/* --- ADD MEAL MODAL --- */}
       <AnimatePresence>
         {isAddMealOpen && (
-          <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="fixed inset-0 z-[110] flex justify-end">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsAddMealOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="relative w-full sm:w-[500px] bg-charcoal border-l border-white/10 shadow-2xl flex flex-col h-full">
               <div className="p-6 border-b border-white/10 flex justify-between items-center bg-matte/50"><h2 className="text-xl font-bold">Add New Meal</h2><button onClick={() => setIsAddMealOpen(false)} className="p-2 rounded-full bg-white/5 hover:bg-white/10"><X className="w-5 h-5" /></button></div>
@@ -554,7 +598,7 @@ export default function AdminDashboard() {
       {/* --- CUSTOMER INSIGHT MODAL --- */}
       <AnimatePresence>
         {customerInsight && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCustomerInsight(null)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative w-full max-w-md bg-charcoal border border-white/10 shadow-2xl rounded-2xl overflow-hidden flex flex-col max-h-[85vh]">
               
