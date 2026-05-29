@@ -17,22 +17,28 @@ connectDB();
 const app = express();
 const server = http.createServer(app);
 
+// The VIP List of allowed websites
+const allowedOrigins = [
+  'https://foodwavebistro.vercel.app', 
+  'http://localhost:5173',            
+  'http://localhost:3000',
+  'https://foodwavebistro.com',       // YOUR NEW CUSTOM DOMAIN
+  'https://www.foodwavebistro.com'             
+];
+
 // Socket.io for Real-time Admin Dashboard
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-    methods: ['GET', 'POST']
+    origin: allowedOrigins, // <--- NOW SOCKET.IO USES THE FULL VIP LIST
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    credentials: true
   }
 });
 
 // Middleware
 app.use(helmet()); 
 app.use(cors({
-  origin: [
-    'https://foodwavebistro.vercel.app', // Your live Vercel frontend
-    'http://localhost:5173',             // Your local frontend (for testing)
-    'http://localhost:3000'              
-  ],
+  origin: allowedOrigins, // <--- EXPRESS USES THE EXACT SAME LIST
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -67,7 +73,6 @@ app.use('/api/v1/orders', require('./modules/orders/order.routes'));
 app.get('/', (req, res) => {
   res.json({ success: true, message: 'Food Wave Bistro API is running!' });
 });
-
 
 app.use(errorHandler);
 
