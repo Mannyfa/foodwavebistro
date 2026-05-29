@@ -6,6 +6,7 @@ import {
   CreditCard, Loader2, ArrowLeft, CheckCircle2, MapPin, Phone,
   Sun, Moon, Info, ShieldCheck, Zap, User, LogOut, Menu
 } from 'lucide-react';
+import emailjs from '@emailjs/browser'; // --- NEW: EmailJS Import ---
 
 import ownerImage from './assets/images/ownerimg.jpeg';
 import logoImage from './assets/logo.png'; 
@@ -117,7 +118,7 @@ function Storefront({ isDark, setIsDark }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [finalTotal, setFinalTotal] = useState(0);
-  const [customer, setCustomer] = useState({ name: '', phone: '', address: '', notes: '' });
+  const [customer, setCustomer] = useState({ name: '', email: '', phone: '', address: '', notes: '' }); // --- UPDATED: Added email ---
 
   // CHECK SESSION ON MOUNT
   useEffect(() => {
@@ -125,7 +126,8 @@ function Storefront({ isDark, setIsDark }) {
     if (storedCustomer) {
       const data = JSON.parse(storedCustomer);
       setLoggedInCustomer(data);
-      setCustomer({ name: data.name, phone: data.phone || '', address: data.address || '', notes: '' });
+      // --- UPDATED: Prefill email ---
+      setCustomer({ name: data.name, email: data.email || '', phone: data.phone || '', address: data.address || '', notes: '' });
     }
   }, []);
 
@@ -190,7 +192,7 @@ function Storefront({ isDark, setIsDark }) {
         localStorage.setItem('customerToken', data.token);
         localStorage.setItem('customerData', JSON.stringify(data.customer));
         setLoggedInCustomer(data.customer);
-        setCustomer({ name: data.customer.name, phone: data.customer.phone || '', address: data.customer.address || '', notes: '' });
+        setCustomer({ name: data.customer.name, email: data.customer.email || '', phone: data.customer.phone || '', address: data.customer.address || '', notes: '' });
         setAuthData({ name: '', email: '', password: '', phone: '', address: '' });
       } else {
         alert(data.message || 'Authentication failed');
@@ -207,7 +209,7 @@ function Storefront({ isDark, setIsDark }) {
     localStorage.removeItem('customerData');
     setLoggedInCustomer(null);
     setMyOrders([]);
-    setCustomer({ name: '', phone: '', address: '', notes: '' });
+    setCustomer({ name: '', email: '', phone: '', address: '', notes: '' });
     setIsAuthOpen(false);
   };
 
@@ -273,7 +275,7 @@ function Storefront({ isDark, setIsDark }) {
 
     // Payload ensures email is passed
     const orderPayload = {
-      customer: { ...customer, email: loggedInCustomer?.email || '', notes: finalNotes },
+      customer: { ...customer, email: customer.email || loggedInCustomer?.email || '', notes: finalNotes },
       items: cart.map(item => ({ 
         menuItem: item.id, 
         quantity: item.qty, 
@@ -296,14 +298,32 @@ function Storefront({ isDark, setIsDark }) {
         setOrderSuccess(true);
         setCart([]);
         
-        // Auto-refresh history so their new order shows up immediately!
+        // Auto-refresh history so their new order shows up immediately
         if (loggedInCustomer) fetchMyOrders();
+
+        // --- NEW: SEND EMAIL TO ADMIN ---
+        try {
+          await emailjs.send(
+            import.meta.env.VITE_EMAILJS_SERVICE_ID,
+            import.meta.env.VITE_EMAILJS_ADMIN_TEMPLATE_ID,
+            {
+              customer_name: customer.name,
+              customer_phone: customer.phone,
+              order_total: grandTotal.toLocaleString(),
+              order_notes: finalNotes || 'No notes provided'
+            },
+            import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+          );
+        } catch (mailErr) {
+          console.error("Admin notification email failed to send", mailErr);
+        }
+        // --------------------------------
 
         setTimeout(() => {
           setIsCheckoutOpen(false);
           setOrderSuccess(false);
           if (!loggedInCustomer) {
-            setCustomer({ name: '', phone: '', address: '', notes: '' });
+            setCustomer({ name: '', email: '', phone: '', address: '', notes: '' });
           } else {
              setCustomer({ ...customer, notes: '' });
           }
@@ -337,7 +357,6 @@ function Storefront({ isDark, setIsDark }) {
               
               <a href="#menu" className={`hover:${theme.heading} transition-colors`}>MENU</a>
               
-              {/* EXPLICIT ORDERS BUTTON */}
               {loggedInCustomer && (
                 <button onClick={() => setIsAuthOpen(true)} className={`hover:${theme.heading} transition-colors`}>
                   ORDERS
@@ -364,7 +383,6 @@ function Storefront({ isDark, setIsDark }) {
                 [ BAG: {cart.reduce((acc, item) => acc + item.qty, 0)} ]
               </button>
               
-              {/* HAMBURGER MENU */}
               <button onClick={() => setIsMobileNavOpen(true)} className={`${theme.heading} hover:text-brand-orange transition-colors ml-1 p-1`}>
                 <Menu className="w-6 h-6" />
               </button>
@@ -890,6 +908,10 @@ function Storefront({ isDark, setIsDark }) {
                       )}
                       <form id="checkout-form" onSubmit={handleCheckoutSubmit} className="space-y-6">
                         <div><label className={`block font-mono text-[10px] tracking-widest uppercase ${theme.textMutedLight} mb-2`}>Full Name</label><input required type="text" value={customer.name} onChange={e => setCustomer({...customer, name: e.target.value})} className={`w-full bg-transparent border-b ${theme.borderSubtle} px-0 py-3 ${theme.heading} focus:border-brand-orange outline-none transition-colors`} /></div>
+                        
+                        {/* --- NEW EMAIL INPUT FOR CHECKOUT --- */}
+                        <div><label className={`block font-mono text-[10px] tracking-widest uppercase ${theme.textMutedLight} mb-2`}>Email Address</label><input required type="email" value={customer.email} onChange={e => setCustomer({...customer, email: e.target.value})} className={`w-full bg-transparent border-b ${theme.borderSubtle} px-0 py-3 ${theme.heading} focus:border-brand-orange outline-none transition-colors`} /></div>
+                        
                         <div><label className={`block font-mono text-[10px] tracking-widest uppercase ${theme.textMutedLight} mb-2`}>Phone Number</label><input required type="tel" value={customer.phone} onChange={e => setCustomer({...customer, phone: e.target.value})} className={`w-full bg-transparent border-b ${theme.borderSubtle} px-0 py-3 ${theme.heading} focus:border-brand-orange outline-none transition-colors`} /></div>
                         <div><label className={`block font-mono text-[10px] tracking-widest uppercase ${theme.textMutedLight} mb-2`}>Delivery Address</label><textarea required rows="2" value={customer.address} onChange={e => setCustomer({...customer, address: e.target.value})} className={`w-full bg-transparent border-b ${theme.borderSubtle} px-0 py-3 ${theme.heading} focus:border-brand-orange outline-none resize-none transition-colors`} /></div>
                         <div><label className={`block font-mono text-[10px] tracking-widest uppercase ${theme.textMutedLight} mb-2`}>Order Notes</label><input type="text" value={customer.notes} onChange={e => setCustomer({...customer, notes: e.target.value})} className={`w-full bg-transparent border-b ${theme.borderSubtle} px-0 py-3 ${theme.heading} focus:border-brand-orange outline-none transition-colors`} /></div>

@@ -6,6 +6,7 @@ import {
   ImagePlus, ChevronRight, ChevronLeft, LogOut, Trash2, Shield, Menu, Edit
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import emailjs from '@emailjs/browser';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('orders');
@@ -165,6 +166,8 @@ export default function AdminDashboard() {
   }, []);
 
   const updateOrderStatus = async (id, newStatus) => {
+    const targetOrder = orders.find(o => o._id === id);
+
     setOrders(prev => prev.map(o => o._id === id ? { ...o, status: newStatus } : o));
     try {
       await fetch(`${import.meta.env.VITE_API_URL}/api/v1/orders/${id}/status`, {
@@ -175,7 +178,29 @@ export default function AdminDashboard() {
         },
         body: JSON.stringify({ status: newStatus })
       });
-    } catch (error) { alert("Warning: Failed to sync status with database."); }
+
+      if (targetOrder && targetOrder.customer.email && (newStatus === 'Preparing' || newStatus === 'Out_For_Delivery')) {
+        const statusMessage = newStatus === 'Preparing' 
+          ? "Great news! We have accepted your order and our kitchen is preparing it right now." 
+          : "Get ready! Your order has been dispatched and is on its way to you.";
+
+        await emailjs.send(
+          import.meta.env.VITE_EMAILJS_SERVICE_ID,
+          import.meta.env.VITE_EMAILJS_CUSTOMER_TEMPLATE_ID,
+          {
+            to_email: targetOrder.customer.email,
+            customer_name: targetOrder.customer.name,
+            order_id: targetOrder._id.substring(targetOrder._id.length - 6).toUpperCase(),
+            status_message: statusMessage
+          },
+          import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+        );
+      }
+
+    } catch (error) { 
+      alert("Warning: Failed to sync status with database or send email."); 
+      console.error(error);
+    }
   };
 
   const toggleMenuAvailability = async (id, currentStatus) => {
