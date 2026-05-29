@@ -94,7 +94,7 @@ function Storefront({ isDark, setIsDark }) {
   const [hoveredMenuId, setHoveredMenuId] = useState(null); 
   const [cart, setCart] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false); // NEW: Mobile Nav State
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false); 
   const [activeMeal, setActiveMeal] = useState(null); 
   const [cartAddOns, setCartAddOns] = useState([]); 
   const [scrolled, setScrolled] = useState(false);
@@ -145,26 +145,27 @@ function Storefront({ isDark, setIsDark }) {
     fetchMenu();
   }, []);
 
-  // FETCH ORDER HISTORY
-  useEffect(() => {
-    const fetchMyOrders = async () => {
-      if (!loggedInCustomer || !isAuthOpen) return;
-      setIsLoadingMyOrders(true);
-      try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/orders/history/${loggedInCustomer.email}`);
-        const data = await res.json();
-        if (data.success) {
-          setMyOrders(data.data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch order history:", error);
-      } finally {
-        setIsLoadingMyOrders(false);
+  // CENTRALIZED ORDER HISTORY FETCH
+  const fetchMyOrders = async () => {
+    if (!loggedInCustomer) return;
+    setIsLoadingMyOrders(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/orders/history/${loggedInCustomer.email}`);
+      const data = await res.json();
+      if (data.success) {
+        setMyOrders(data.data);
       }
-    };
+    } catch (error) {
+      console.error("Failed to fetch order history:", error);
+    } finally {
+      setIsLoadingMyOrders(false);
+    }
+  };
 
+  // Fetch immediately when logged in
+  useEffect(() => {
     fetchMyOrders();
-  }, [loggedInCustomer, isAuthOpen]);
+  }, [loggedInCustomer]);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -270,7 +271,7 @@ function Storefront({ isDark, setIsDark }) {
       ? `${customer.notes} ${addOnsSummary ? `|| Add-ons: ${addOnsSummary}` : ''}`
       : (addOnsSummary ? `Add-ons: ${addOnsSummary}` : '');
 
-    // LINK ORDER TO CUSTOMER EMAIL FOR HISTORY
+    // Payload ensures email is passed
     const orderPayload = {
       customer: { ...customer, email: loggedInCustomer?.email || '', notes: finalNotes },
       items: cart.map(item => ({ 
@@ -294,6 +295,10 @@ function Storefront({ isDark, setIsDark }) {
       if (data.success) {
         setOrderSuccess(true);
         setCart([]);
+        
+        // Auto-refresh history so their new order shows up immediately!
+        if (loggedInCustomer) fetchMyOrders();
+
         setTimeout(() => {
           setIsCheckoutOpen(false);
           setOrderSuccess(false);
@@ -329,15 +334,17 @@ function Storefront({ isDark, setIsDark }) {
               <button onClick={() => setIsDark(!isDark)} className={`hover:${theme.heading} transition-colors`}>
                 {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </button>
-              <a href="#menu" className={`hover:${theme.heading} transition-colors`}>Menu</a>
               
+              <a href="#menu" className={`hover:${theme.heading} transition-colors`}>MENU</a>
+              
+              {/* EXPLICIT ORDERS BUTTON */}
               {loggedInCustomer && (
                 <button onClick={() => setIsAuthOpen(true)} className={`hover:${theme.heading} transition-colors`}>
-                  Orders
+                  ORDERS
                 </button>
               )}
               
-              <button onClick={() => setIsAuthOpen(true)} className={`${theme.heading} hover:text-brand-orange transition-colors flex items-center gap-1`}>
+              <button onClick={() => setIsAuthOpen(true)} className={`${theme.heading} hover:text-brand-orange transition-colors flex items-center gap-2`}>
                 <User className="w-4 h-4" />
                 <span>{loggedInCustomer ? loggedInCustomer.name.split(' ')[0] : 'SIGN IN'}</span>
               </button>
@@ -352,11 +359,14 @@ function Storefront({ isDark, setIsDark }) {
               <button onClick={() => setIsDark(!isDark)} className={`hover:${theme.heading} transition-colors`}>
                 {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </button>
+              
               <button onClick={() => setIsCartOpen(true)} className={`${theme.heading} hover:text-brand-orange transition-colors`}>
                 [ BAG: {cart.reduce((acc, item) => acc + item.qty, 0)} ]
               </button>
-              <button onClick={() => setIsMobileNavOpen(true)} className={`${theme.heading} hover:text-brand-orange transition-colors ml-1`}>
-                <Menu className="w-5 h-5" />
+              
+              {/* HAMBURGER MENU */}
+              <button onClick={() => setIsMobileNavOpen(true)} className={`${theme.heading} hover:text-brand-orange transition-colors ml-1 p-1`}>
+                <Menu className="w-6 h-6" />
               </button>
             </div>
 
@@ -376,9 +386,13 @@ function Storefront({ isDark, setIsDark }) {
                 <div className="flex flex-col p-8 space-y-8 text-sm font-bold tracking-widest uppercase">
                   <a href="#menu" onClick={() => setIsMobileNavOpen(false)} className={`${theme.textMuted} hover:${theme.heading} transition-colors`}>Menu</a>
                   <a href="#info" onClick={() => setIsMobileNavOpen(false)} className={`${theme.textMuted} hover:${theme.heading} transition-colors`}>Info</a>
+                  
                   {loggedInCustomer && (
-                    <button onClick={() => {setIsMobileNavOpen(false); setIsAuthOpen(true);}} className={`text-left ${theme.textMuted} hover:${theme.heading} transition-colors`}>Orders</button>
+                    <button onClick={() => {setIsMobileNavOpen(false); setIsAuthOpen(true);}} className={`text-left ${theme.textMuted} hover:${theme.heading} transition-colors`}>
+                      Orders
+                    </button>
                   )}
+                  
                   <button onClick={() => {setIsMobileNavOpen(false); setIsAuthOpen(true);}} className={`text-left flex items-center gap-3 ${theme.textMuted} hover:${theme.heading} transition-colors`}>
                     <User className="w-4 h-4" /> {loggedInCustomer ? 'Profile' : 'Sign In'}
                   </button>
