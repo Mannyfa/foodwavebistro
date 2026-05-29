@@ -678,6 +678,7 @@ function Storefront({ isDark, setIsDark }) {
             <div className="w-1/2 flex flex-col items-end text-right">
               <h2 className={`text-2xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter mb-4 md:mb-10 ${theme.heading}`}>The Visionary</h2>
               <p className={`font-mono text-[8px] md:text-xs text-brand-orange tracking-widest uppercase mb-4`}>Founder & Head Chef</p>
+              <p className={`font-mono text-[8px] md:text-xs text-brand-orange tracking-widest uppercase mb-4`}>NIFEMI OMOWUNMI OGUNYEMI</p>
               <p className={`${theme.textMuted} font-light leading-relaxed text-[10px] md:text-lg max-w-sm`}>Crafting the perfect balance of local flavor and modern culinary technique. Every dish that leaves our kitchen is a testament to quality, cleanliness, and consistency.</p>
             </div>
           </div>
@@ -880,9 +881,9 @@ function Storefront({ isDark, setIsDark }) {
                     <p className={`${theme.textMuted} font-light mb-10`}>Your order is now on our live board.</p>
                     <div className={`${theme.cardBg} border ${theme.borderSubtle} p-8 w-full mb-8 text-left rounded-xl`}>
                       <p className="font-mono text-[10px] text-brand-orange tracking-widest uppercase mb-4">Transfer Details</p>
-                      <p className={`font-bold text-xl mb-1 ${theme.heading}`}>Guaranty Trust Bank</p>
-                      <p className={`text-3xl tracking-widest font-mono font-light mb-2 ${theme.heading}`}>0123456789</p>
-                      <p className={`text-sm ${theme.textMutedLight} mb-6`}>Food Wave Bistro Ltd.</p>
+                      <p className={`font-bold text-xl mb-1 ${theme.heading}`}>OPAY MFB</p>
+                      <p className={`text-3xl tracking-widest font-mono font-light mb-2 ${theme.heading}`}>6431779024</p>
+                      <p className={`text-sm ${theme.textMutedLight} mb-6`}>FOOD WAVE BISTRO.</p>
                       <div className={`pt-6 border-t ${theme.borderSubtle} flex justify-between items-end`}>
                         <span className={`${theme.textMutedLight} font-light`}>Amount Due:</span><span className="font-black text-2xl text-brand-orange">₦{finalTotal.toLocaleString()}</span>
                       </div>
