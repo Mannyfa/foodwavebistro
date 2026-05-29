@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChevronRight, Star, Clock, MessageCircle, X, Plus, Minus, 
   CreditCard, Loader2, ArrowLeft, CheckCircle2, MapPin, Phone,
-  Sun, Moon, Info, ShieldCheck, Zap, User, LogOut
+  Sun, Moon, Info, ShieldCheck, Zap, User, LogOut, Menu
 } from 'lucide-react';
 
 import ownerImage from './assets/images/ownerimg.jpeg';
@@ -94,6 +94,7 @@ function Storefront({ isDark, setIsDark }) {
   const [hoveredMenuId, setHoveredMenuId] = useState(null); 
   const [cart, setCart] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false); // NEW: Mobile Nav State
   const [activeMeal, setActiveMeal] = useState(null); 
   const [cartAddOns, setCartAddOns] = useState([]); 
   const [scrolled, setScrolled] = useState(false);
@@ -322,23 +323,70 @@ function Storefront({ isDark, setIsDark }) {
             <Link to="/" className={`text-lg md:text-2xl font-black tracking-tighter uppercase ${theme.heading}`}>
               Food Wave <span className="text-brand-orange font-normal italic">Bistro.</span>
             </Link>
-            <div className={`flex items-center gap-4 md:gap-8 text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase ${theme.textMuted}`}>
+
+            {/* DESKTOP NAV */}
+            <div className={`hidden md:flex items-center gap-8 text-xs font-bold tracking-[0.2em] uppercase ${theme.textMuted}`}>
               <button onClick={() => setIsDark(!isDark)} className={`hover:${theme.heading} transition-colors`}>
-                {isDark ? <Sun className="w-4 h-4 md:w-5 md:h-5" /> : <Moon className="w-4 h-4 md:w-5 md:h-5" />}
+                {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </button>
-              <a href="#menu" className={`hidden md:block hover:${theme.heading} transition-colors`}>Menu</a>
+              <a href="#menu" className={`hover:${theme.heading} transition-colors`}>Menu</a>
+              
+              {loggedInCustomer && (
+                <button onClick={() => setIsAuthOpen(true)} className={`hover:${theme.heading} transition-colors`}>
+                  Orders
+                </button>
+              )}
               
               <button onClick={() => setIsAuthOpen(true)} className={`${theme.heading} hover:text-brand-orange transition-colors flex items-center gap-1`}>
-                <User className="w-4 h-4 md:w-5 md:h-5" />
-                <span className="hidden md:inline">{loggedInCustomer ? loggedInCustomer.name.split(' ')[0] : 'SIGN IN'}</span>
+                <User className="w-4 h-4" />
+                <span>{loggedInCustomer ? loggedInCustomer.name.split(' ')[0] : 'SIGN IN'}</span>
               </button>
 
               <button onClick={() => setIsCartOpen(true)} className={`${theme.heading} hover:text-brand-orange transition-colors`}>
                 [ BAG : {cart.reduce((acc, item) => acc + item.qty, 0)} ]
               </button>
             </div>
+
+            {/* MOBILE NAV */}
+            <div className={`flex md:hidden items-center gap-4 text-[10px] font-bold tracking-[0.2em] uppercase ${theme.textMuted}`}>
+              <button onClick={() => setIsDark(!isDark)} className={`hover:${theme.heading} transition-colors`}>
+                {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </button>
+              <button onClick={() => setIsCartOpen(true)} className={`${theme.heading} hover:text-brand-orange transition-colors`}>
+                [ BAG: {cart.reduce((acc, item) => acc + item.qty, 0)} ]
+              </button>
+              <button onClick={() => setIsMobileNavOpen(true)} className={`${theme.heading} hover:text-brand-orange transition-colors ml-1`}>
+                <Menu className="w-5 h-5" />
+              </button>
+            </div>
+
           </div>
         </nav>
+
+        {/* --- MOBILE NAVIGATION DRAWER --- */}
+        <AnimatePresence>
+          {isMobileNavOpen && (
+            <>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsMobileNavOpen(false)} className={`fixed inset-0 ${theme.overlay} backdrop-blur-md z-[100] md:hidden`} />
+              <motion.div initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className={`fixed top-0 left-0 h-full w-[280px] ${theme.modalBg} border-r ${theme.borderSubtle} z-[100] flex flex-col shadow-2xl md:hidden`}>
+                <div className={`p-8 border-b ${theme.borderSubtle} flex justify-between items-center`}>
+                  <h2 className={`text-xl font-black uppercase tracking-tighter ${theme.heading}`}>Menu</h2>
+                  <button onClick={() => setIsMobileNavOpen(false)} className={`${theme.textMuted} hover:${theme.heading} transition-colors`}><X className="w-6 h-6" /></button>
+                </div>
+                <div className="flex flex-col p-8 space-y-8 text-sm font-bold tracking-widest uppercase">
+                  <a href="#menu" onClick={() => setIsMobileNavOpen(false)} className={`${theme.textMuted} hover:${theme.heading} transition-colors`}>Menu</a>
+                  <a href="#info" onClick={() => setIsMobileNavOpen(false)} className={`${theme.textMuted} hover:${theme.heading} transition-colors`}>Info</a>
+                  {loggedInCustomer && (
+                    <button onClick={() => {setIsMobileNavOpen(false); setIsAuthOpen(true);}} className={`text-left ${theme.textMuted} hover:${theme.heading} transition-colors`}>Orders</button>
+                  )}
+                  <button onClick={() => {setIsMobileNavOpen(false); setIsAuthOpen(true);}} className={`text-left flex items-center gap-3 ${theme.textMuted} hover:${theme.heading} transition-colors`}>
+                    <User className="w-4 h-4" /> {loggedInCustomer ? 'Profile' : 'Sign In'}
+                  </button>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
 
         {/* --- HERO SECTION --- */}
         <section className={`relative min-h-[90vh] flex items-center justify-center overflow-hidden border-b ${theme.borderSubtle} pt-24 pb-12`}>
