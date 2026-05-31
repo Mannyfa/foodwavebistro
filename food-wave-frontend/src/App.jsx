@@ -6,7 +6,7 @@ import {
   CreditCard, Loader2, ArrowLeft, CheckCircle2, MapPin, Phone,
   Sun, Moon, Info, ShieldCheck, Zap, User, LogOut, Menu
 } from 'lucide-react';
-import emailjs from '@emailjs/browser'; // --- NEW: EmailJS Import ---
+import emailjs from '@emailjs/browser';
 
 import ownerImage from './assets/images/ownerimg.jpeg';
 import logoImage from './assets/logo.png'; 
@@ -118,7 +118,7 @@ function Storefront({ isDark, setIsDark }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [finalTotal, setFinalTotal] = useState(0);
-  const [customer, setCustomer] = useState({ name: '', email: '', phone: '', address: '', notes: '' }); // --- UPDATED: Added email ---
+  const [customer, setCustomer] = useState({ name: '', email: '', phone: '', address: '', notes: '' });
 
   // CHECK SESSION ON MOUNT
   useEffect(() => {
@@ -126,7 +126,6 @@ function Storefront({ isDark, setIsDark }) {
     if (storedCustomer) {
       const data = JSON.parse(storedCustomer);
       setLoggedInCustomer(data);
-      // --- UPDATED: Prefill email ---
       setCustomer({ name: data.name, email: data.email || '', phone: data.phone || '', address: data.address || '', notes: '' });
     }
   }, []);
@@ -194,6 +193,7 @@ function Storefront({ isDark, setIsDark }) {
         setLoggedInCustomer(data.customer);
         setCustomer({ name: data.customer.name, email: data.customer.email || '', phone: data.customer.phone || '', address: data.customer.address || '', notes: '' });
         setAuthData({ name: '', email: '', password: '', phone: '', address: '' });
+        setIsAuthOpen(false);
       } else {
         alert(data.message || 'Authentication failed');
       }
@@ -273,7 +273,6 @@ function Storefront({ isDark, setIsDark }) {
       ? `${customer.notes} ${addOnsSummary ? `|| Add-ons: ${addOnsSummary}` : ''}`
       : (addOnsSummary ? `Add-ons: ${addOnsSummary}` : '');
 
-    // Payload ensures email is passed
     const orderPayload = {
       customer: { ...customer, email: customer.email || loggedInCustomer?.email || '', notes: finalNotes },
       items: cart.map(item => ({ 
@@ -298,10 +297,8 @@ function Storefront({ isDark, setIsDark }) {
         setOrderSuccess(true);
         setCart([]);
         
-        // Auto-refresh history so their new order shows up immediately
         if (loggedInCustomer) fetchMyOrders();
 
-        // --- NEW: SEND EMAIL TO ADMIN ---
         try {
           await emailjs.send(
             import.meta.env.VITE_EMAILJS_SERVICE_ID,
@@ -317,7 +314,6 @@ function Storefront({ isDark, setIsDark }) {
         } catch (mailErr) {
           console.error("Admin notification email failed to send", mailErr);
         }
-        // --------------------------------
 
         setTimeout(() => {
           setIsCheckoutOpen(false);
@@ -550,6 +546,14 @@ function Storefront({ isDark, setIsDark }) {
                           <span className="flex items-center gap-1"><Star className="w-2 h-2 md:w-3 md:h-3 text-brand-gold" /> {item.rating || '5.0'}</span>
                           <span>|</span>
                           <span className="flex items-center gap-1"><Clock className="w-2 h-2 md:w-3 md:h-3" /> {item.preparationTime} min</span>
+                          
+                          {/* NEW: Explicitly highlight if there are Add-ons */}
+                          {item.addOns?.length > 0 && (
+                            <>
+                              <span>|</span>
+                              <span className="text-brand-orange font-bold">+ Extras</span>
+                            </>
+                          )}
                         </div>
                         
                         <div className="mt-4 md:mt-8 flex flex-col items-end gap-3 md:gap-4">
@@ -577,7 +581,8 @@ function Storefront({ isDark, setIsDark }) {
                             onClick={() => handleOpenCustomization(item)} 
                             className={`text-[8px] md:text-[10px] font-bold tracking-widest uppercase border ${theme.border} hover:border-brand-orange hover:bg-brand-orange hover:text-white px-4 py-2 md:px-6 md:py-3 rounded-full transition-all ${theme.text}`}
                           >
-                            + Add to Bag
+                            {/* Dynamically change button text based on add-ons */}
+                            {item.addOns?.length > 0 ? 'Customize' : '+ Add to Bag'}
                           </button>
                         </div>
                       </motion.div>
@@ -678,7 +683,6 @@ function Storefront({ isDark, setIsDark }) {
             <div className="w-1/2 flex flex-col items-end text-right">
               <h2 className={`text-2xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter mb-4 md:mb-10 ${theme.heading}`}>The Visionary</h2>
               <p className={`font-mono text-[8px] md:text-xs text-brand-orange tracking-widest uppercase mb-4`}>Founder & Head Chef</p>
-              <p className={`font-mono text-[8px] md:text-xs text-brand-orange tracking-widest uppercase mb-4`}>NIFEMI OMOWUNMI OGUNYEMI</p>
               <p className={`${theme.textMuted} font-light leading-relaxed text-[10px] md:text-lg max-w-sm`}>Crafting the perfect balance of local flavor and modern culinary technique. Every dish that leaves our kitchen is a testament to quality, cleanliness, and consistency.</p>
             </div>
           </div>
@@ -881,9 +885,9 @@ function Storefront({ isDark, setIsDark }) {
                     <p className={`${theme.textMuted} font-light mb-10`}>Your order is now on our live board.</p>
                     <div className={`${theme.cardBg} border ${theme.borderSubtle} p-8 w-full mb-8 text-left rounded-xl`}>
                       <p className="font-mono text-[10px] text-brand-orange tracking-widest uppercase mb-4">Transfer Details</p>
-                      <p className={`font-bold text-xl mb-1 ${theme.heading}`}>OPAY MFB</p>
-                      <p className={`text-3xl tracking-widest font-mono font-light mb-2 ${theme.heading}`}>6431779024</p>
-                      <p className={`text-sm ${theme.textMutedLight} mb-6`}>FOOD WAVE BISTRO.</p>
+                      <p className={`font-bold text-xl mb-1 ${theme.heading}`}>Guaranty Trust Bank</p>
+                      <p className={`text-3xl tracking-widest font-mono font-light mb-2 ${theme.heading}`}>0123456789</p>
+                      <p className={`text-sm ${theme.textMutedLight} mb-6`}>Food Wave Bistro Ltd.</p>
                       <div className={`pt-6 border-t ${theme.borderSubtle} flex justify-between items-end`}>
                         <span className={`${theme.textMutedLight} font-light`}>Amount Due:</span><span className="font-black text-2xl text-brand-orange">₦{finalTotal.toLocaleString()}</span>
                       </div>
@@ -910,7 +914,6 @@ function Storefront({ isDark, setIsDark }) {
                       <form id="checkout-form" onSubmit={handleCheckoutSubmit} className="space-y-6">
                         <div><label className={`block font-mono text-[10px] tracking-widest uppercase ${theme.textMutedLight} mb-2`}>Full Name</label><input required type="text" value={customer.name} onChange={e => setCustomer({...customer, name: e.target.value})} className={`w-full bg-transparent border-b ${theme.borderSubtle} px-0 py-3 ${theme.heading} focus:border-brand-orange outline-none transition-colors`} /></div>
                         
-                        {/* --- NEW EMAIL INPUT FOR CHECKOUT --- */}
                         <div><label className={`block font-mono text-[10px] tracking-widest uppercase ${theme.textMutedLight} mb-2`}>Email Address</label><input required type="email" value={customer.email} onChange={e => setCustomer({...customer, email: e.target.value})} className={`w-full bg-transparent border-b ${theme.borderSubtle} px-0 py-3 ${theme.heading} focus:border-brand-orange outline-none transition-colors`} /></div>
                         
                         <div><label className={`block font-mono text-[10px] tracking-widest uppercase ${theme.textMutedLight} mb-2`}>Phone Number</label><input required type="tel" value={customer.phone} onChange={e => setCustomer({...customer, phone: e.target.value})} className={`w-full bg-transparent border-b ${theme.borderSubtle} px-0 py-3 ${theme.heading} focus:border-brand-orange outline-none transition-colors`} /></div>
