@@ -113,7 +113,7 @@ function Storefront({ isDark, setIsDark }) {
   const [myOrders, setMyOrders] = useState([]);
   const [isLoadingMyOrders, setIsLoadingMyOrders] = useState(false);
 
-  // CHECKOUT & RECEIPT UPLOAD STATES
+  // CHECKOUT STATES
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
@@ -121,6 +121,7 @@ function Storefront({ isDark, setIsDark }) {
   const [finalTotal, setFinalTotal] = useState(0);
   const [customer, setCustomer] = useState({ name: '', email: '', phone: '', address: '', notes: '' });
 
+  // RECEIPT STATES
   const [receiptFile, setReceiptFile] = useState(null);
   const [receiptPreview, setReceiptPreview] = useState(null);
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
@@ -169,6 +170,7 @@ function Storefront({ isDark, setIsDark }) {
     }
   };
 
+  // Fetch immediately when logged in
   useEffect(() => {
     fetchMyOrders();
   }, [loggedInCustomer]);
@@ -299,7 +301,7 @@ function Storefront({ isDark, setIsDark }) {
       const data = await response.json();
 
       if (data.success) {
-        setCreatedOrderId(data.data._id);
+        setCreatedOrderId(data.data._id); 
         setOrderSuccess(true);
         setCart([]);
         
@@ -383,7 +385,7 @@ function Storefront({ isDark, setIsDark }) {
         <nav className={`fixed w-full z-50 transition-all duration-500 ${scrolled ? `${theme.navBg} backdrop-blur-xl border-b ${theme.borderSubtle} py-4` : 'bg-transparent py-8'}`}>
           <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
             <Link to="/" className={`text-lg md:text-2xl font-black tracking-tighter uppercase ${theme.heading}`}>
-              Food Wave <span className="text-brand-orange font-normal">Bistro.</span>
+              Food Wave <span className="text-brand-orange font-normal italic">Bistro.</span>
             </Link>
 
             {/* DESKTOP NAV */}
@@ -467,10 +469,9 @@ function Storefront({ isDark, setIsDark }) {
               <img src="https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?q=80&w=1000&auto=format&fit=crop" alt="Premium Dish" className="w-full h-full object-cover scale-105 hover:scale-100 transition-transform duration-700" />
             </div>
 
-            <div className="w-1/2 flex flex-col items-end text-right">
-            
+            <div className="w-1/2 flex flex-col items-end text-right">            
               <motion.h1 initial="hidden" animate="show" variants={fadeUp} className={`text-2xl sm:text-5xl md:text-7xl lg:text-[7rem] font-black leading-[1] tracking-tighter mb-4 md:mb-8 uppercase ${theme.heading}`}>
-                Premium <br/>Comfort <br/><span className="text-transparent bg-clip-text bg-gradient-to-l from-brand-orange to-brand-gold font-medium pr-1 md:pr-4">Delivered.</span>
+                Premium <br/>Comfort <br/><span className="text-transparent bg-clip-text bg-gradient-to-l from-brand-orange to-brand-gold italic font-medium pr-1 md:pr-4">Delivered.</span>
               </motion.h1>
               <motion.p initial="hidden" animate="show" variants={fadeUp} className={`text-[10px] md:text-xl ${theme.textMuted} mb-8 md:mb-12 font-light max-w-sm`}>
                 Elevating the cloud kitchen experience.
@@ -512,7 +513,7 @@ function Storefront({ isDark, setIsDark }) {
                 </motion.div>
               </div>
 
-              <motion.p variants={fadeUp} className={`mt-6 md:mt-10 text-[8px] sm:text-[10px] md:text-sm ${theme.textMuted} border-l-2 border-brand-orange pl-3 md:pl-4`}>
+              <motion.p variants={fadeUp} className={`mt-6 md:mt-10 text-[8px] sm:text-[10px] md:text-sm italic ${theme.textMuted} border-l-2 border-brand-orange pl-3 md:pl-4`}>
                 Order easily through our website and enjoy fast, reliable, and stress-free delivery right to your doorstep. Thank you for choosing us we look forward to serving you.
               </motion.p>
             </motion.div>
@@ -929,25 +930,26 @@ function Storefront({ isDark, setIsDark }) {
                      <button onClick={closeCheckoutEntirely} className={`font-mono text-xs tracking-widest uppercase ${theme.textMuted} hover:${theme.heading} transition-colors border-b ${theme.borderSubtle} pb-1`}>Back to Home</button>
                    </div>
                 ) : orderSuccess ? (
-                  <div className="p-8 flex flex-col">
+                  // ---> ADDED overflow-y-auto & hide-scrollbar HERE TO FIX SCROLLING <---
+                  <div className="p-6 md:p-8 flex flex-col overflow-y-auto hide-scrollbar">
                     <div className="flex flex-col items-center text-center mb-8">
                       <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", bounce: 0.5 }} className="w-16 h-16 bg-brand-orange/20 text-brand-orange rounded-full flex items-center justify-center mb-6"><CheckCircle2 className="w-8 h-8" /></motion.div>
                       <h2 className={`text-3xl font-black uppercase tracking-tighter mb-2 ${theme.heading}`}>Order Placed</h2>
                       <p className={`${theme.textMuted} font-light text-sm`}>Please make your transfer to the account below.</p>
                     </div>
                     
-                    <div className={`${theme.cardBg} border ${theme.borderSubtle} p-6 w-full mb-6 text-left rounded-xl`}>
+                    <div className={`${theme.cardBg} border ${theme.borderSubtle} p-6 w-full mb-6 text-left rounded-xl shrink-0`}>
                       <p className="font-mono text-[10px] text-brand-orange tracking-widest uppercase mb-4">Transfer Details</p>
-                      <p className={`font-bold text-lg mb-1 ${theme.heading}`}>OPAY MICROFINANCE BANK</p>
+                      <p className={`font-bold text-lg mb-1 ${theme.heading}`}>OPAY Microfinance Bank</p>
                       <p className={`text-2xl tracking-widest font-mono font-light mb-2 ${theme.heading}`}>6431779024</p>
-                      <p className={`text-xs ${theme.textMutedLight} mb-6`}>Food Wave Bistro.</p>
+                      <p className={`text-xs ${theme.textMutedLight} mb-6`}>Food Wave Bistro..</p>
                       <div className={`pt-4 border-t ${theme.borderSubtle} flex justify-between items-end`}>
                         <span className={`${theme.textMutedLight} font-light text-sm`}>Amount Due:</span><span className="font-black text-xl text-brand-orange">₦{finalTotal.toLocaleString()}</span>
                       </div>
                     </div>
 
                     {/* RECEIPT UPLOAD SECTION */}
-                    <div className="mt-4 w-full">
+                    <div className="mt-4 w-full shrink-0">
                       <label className={`block font-mono text-[10px] tracking-widest uppercase ${theme.textMutedLight} mb-4`}>Upload Payment Receipt</label>
                       <input type="file" accept="image/*" onChange={handleReceiptImageChange} className={`w-full text-sm ${theme.textMuted} file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-bold file:bg-brand-orange/10 file:text-brand-orange hover:file:bg-brand-orange/20 cursor-pointer`} />
                       
