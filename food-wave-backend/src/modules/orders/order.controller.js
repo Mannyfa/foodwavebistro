@@ -90,3 +90,26 @@ exports.getCustomerOrders = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+exports.uploadOrderReceipt = async (req, res) => {
+  try {
+    // req.file is provided by your Cloudinary upload middleware
+    if (!req.file || !req.file.path) {
+      return res.status(400).json({ success: false, message: 'Please upload an image' });
+    }
+
+    // Find the order and update it
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+    order.payment.receipt = {
+      url: req.file.path,
+      public_id: req.file.filename
+    };
+    
+    await order.save();
+    res.status(200).json({ success: true, data: order });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

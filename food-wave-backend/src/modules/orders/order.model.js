@@ -27,7 +27,13 @@ const orderSchema = new mongoose.Schema({
   payment: {
     method: { type: String, enum: ['Card', 'Transfer', 'Pay_On_Delivery'], required: true },
     status: { type: String, enum: ['Pending', 'Paid', 'Failed'], default: 'Pending' },
-    reference: { type: String } // Paystack/Flutterwave transaction ref
+    reference: { type: String }, // Paystack/Flutterwave transaction ref
+    
+    // ---> NEW: Added Receipt Object for Cloudinary Uploads <---
+    receipt: {
+      url: { type: String },
+      public_id: { type: String }
+    }
   }
 }, { timestamps: true });
 

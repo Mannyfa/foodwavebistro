@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChevronRight, Star, Clock, MessageCircle, X, Plus, Minus, 
   CreditCard, Loader2, ArrowLeft, CheckCircle2, MapPin, Phone,
-  Sun, Moon, Info, ShieldCheck, Zap, User, LogOut, Menu
+  Sun, Moon, Info, ShieldCheck, Zap, User, LogOut, Menu, ImagePlus
 } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 
@@ -113,12 +113,18 @@ function Storefront({ isDark, setIsDark }) {
   const [myOrders, setMyOrders] = useState([]);
   const [isLoadingMyOrders, setIsLoadingMyOrders] = useState(false);
 
-  // CHECKOUT STATES
+  // CHECKOUT & RECEIPT UPLOAD STATES
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [createdOrderId, setCreatedOrderId] = useState(null);
   const [finalTotal, setFinalTotal] = useState(0);
   const [customer, setCustomer] = useState({ name: '', email: '', phone: '', address: '', notes: '' });
+
+  const [receiptFile, setReceiptFile] = useState(null);
+  const [receiptPreview, setReceiptPreview] = useState(null);
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
+  const [receiptUploaded, setReceiptUploaded] = useState(false);
 
   // CHECK SESSION ON MOUNT
   useEffect(() => {
@@ -163,7 +169,6 @@ function Storefront({ isDark, setIsDark }) {
     }
   };
 
-  // Fetch immediately when logged in
   useEffect(() => {
     fetchMyOrders();
   }, [loggedInCustomer]);
@@ -294,6 +299,7 @@ function Storefront({ isDark, setIsDark }) {
       const data = await response.json();
 
       if (data.success) {
+        setCreatedOrderId(data.data._id);
         setOrderSuccess(true);
         setCart([]);
         
@@ -315,18 +321,53 @@ function Storefront({ isDark, setIsDark }) {
           console.error("Admin notification email failed to send", mailErr);
         }
 
-        setTimeout(() => {
-          setIsCheckoutOpen(false);
-          setOrderSuccess(false);
-          if (!loggedInCustomer) {
-            setCustomer({ name: '', email: '', phone: '', address: '', notes: '' });
-          } else {
-             setCustomer({ ...customer, notes: '' });
-          }
-        }, 15000);
       } else alert('Something went wrong. Please try again.');
     } catch (error) { alert('Network error. Please ensure your backend is running.'); } 
     finally { setIsSubmitting(false); }
+  };
+
+  const handleReceiptImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setReceiptFile(file);
+      setReceiptPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleReceiptSubmit = async () => {
+    if (!receiptFile || !createdOrderId) return;
+    setIsUploadingReceipt(true);
+    
+    const formData = new FormData();
+    formData.append('receipt', receiptFile);
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/orders/${createdOrderId}/receipt`, {
+        method: 'PATCH',
+        body: formData
+      });
+      const data = await response.json();
+      if (data.success) {
+        setReceiptUploaded(true);
+      } else {
+        alert('Failed to upload receipt. ' + data.message);
+      }
+    } catch (error) {
+      alert('Network error while uploading receipt.');
+    } finally {
+      setIsUploadingReceipt(false);
+    }
+  };
+
+  const closeCheckoutEntirely = () => {
+    setIsCheckoutOpen(false);
+    setOrderSuccess(false);
+    setReceiptUploaded(false);
+    setReceiptFile(null);
+    setReceiptPreview(null);
+    setCreatedOrderId(null);
+    if (!loggedInCustomer) setCustomer({ name: '', email: '', phone: '', address: '', notes: '' });
+    else setCustomer({ ...customer, notes: '' });
   };
 
   return (
@@ -342,7 +383,7 @@ function Storefront({ isDark, setIsDark }) {
         <nav className={`fixed w-full z-50 transition-all duration-500 ${scrolled ? `${theme.navBg} backdrop-blur-xl border-b ${theme.borderSubtle} py-4` : 'bg-transparent py-8'}`}>
           <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
             <Link to="/" className={`text-lg md:text-2xl font-black tracking-tighter uppercase ${theme.heading}`}>
-              Food Wave <span className="text-brand-orange font-normal italic">Bistro.</span>
+              Food Wave <span className="text-brand-orange font-normal">Bistro.</span>
             </Link>
 
             {/* DESKTOP NAV */}
@@ -427,8 +468,9 @@ function Storefront({ isDark, setIsDark }) {
             </div>
 
             <div className="w-1/2 flex flex-col items-end text-right">
+            
               <motion.h1 initial="hidden" animate="show" variants={fadeUp} className={`text-2xl sm:text-5xl md:text-7xl lg:text-[7rem] font-black leading-[1] tracking-tighter mb-4 md:mb-8 uppercase ${theme.heading}`}>
-                Premium <br/>Comfort <br/><span className="text-transparent bg-clip-text bg-gradient-to-l from-brand-orange to-brand-gold italic font-medium pr-1 md:pr-4">Delivered.</span>
+                Premium <br/>Comfort <br/><span className="text-transparent bg-clip-text bg-gradient-to-l from-brand-orange to-brand-gold font-medium pr-1 md:pr-4">Delivered.</span>
               </motion.h1>
               <motion.p initial="hidden" animate="show" variants={fadeUp} className={`text-[10px] md:text-xl ${theme.textMuted} mb-8 md:mb-12 font-light max-w-sm`}>
                 Elevating the cloud kitchen experience.
@@ -470,7 +512,7 @@ function Storefront({ isDark, setIsDark }) {
                 </motion.div>
               </div>
 
-              <motion.p variants={fadeUp} className={`mt-6 md:mt-10 text-[8px] sm:text-[10px] md:text-sm italic ${theme.textMuted} border-l-2 border-brand-orange pl-3 md:pl-4`}>
+              <motion.p variants={fadeUp} className={`mt-6 md:mt-10 text-[8px] sm:text-[10px] md:text-sm ${theme.textMuted} border-l-2 border-brand-orange pl-3 md:pl-4`}>
                 Order easily through our website and enjoy fast, reliable, and stress-free delivery right to your doorstep. Thank you for choosing us we look forward to serving you.
               </motion.p>
             </motion.div>
@@ -682,7 +724,7 @@ function Storefront({ isDark, setIsDark }) {
             <div className="w-1/2 flex flex-col items-end text-right">
               <h2 className={`text-2xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter mb-4 md:mb-10 ${theme.heading}`}>The Visionary</h2>
               <p className={`font-mono text-[8px] md:text-xs text-brand-orange tracking-widest uppercase mb-4`}>NIFEMI OMOWUNMI OGUNYEMI</p>
-             <p className={`font-mono text-[8px] md:text-xs text-brand-orange tracking-widest uppercase mb-4`}>Founder & Head Chef</p>
+              <p className={`font-mono text-[8px] md:text-xs text-brand-orange tracking-widest uppercase mb-4`}>Founder & Head Chef</p>
               <p className={`${theme.textMuted} font-light leading-relaxed text-[10px] md:text-lg max-w-sm`}>Crafting the perfect balance of local flavor and modern culinary technique. Every dish that leaves our kitchen is a testament to quality, cleanliness, and consistency.</p>
             </div>
           </div>
@@ -872,27 +914,60 @@ function Storefront({ isDark, setIsDark }) {
           )}
         </AnimatePresence>
 
-        {/* --- CHECKOUT MODAL --- */}
+        {/* --- CHECKOUT & RECEIPT MODAL --- */}
         <AnimatePresence>
           {isCheckoutOpen && (
             <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6">
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => !orderSuccess && setIsCheckoutOpen(false)} className={`absolute inset-0 ${theme.overlay} backdrop-blur-md`} />
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className={`absolute inset-0 ${theme.overlay} backdrop-blur-md`} />
               <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className={`relative w-full max-w-lg ${theme.modalBg} border ${theme.borderSubtle} rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]`}>
-                {orderSuccess ? (
-                  <div className="p-12 flex flex-col items-center text-center">
-                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", bounce: 0.5 }} className="w-20 h-20 bg-brand-orange/20 text-brand-orange rounded-full flex items-center justify-center mb-8"><CheckCircle2 className="w-10 h-10" /></motion.div>
-                    <h2 className={`text-4xl font-black uppercase tracking-tighter mb-4 ${theme.heading}`}>Order Secured</h2>
-                    <p className={`${theme.textMuted} font-light mb-10`}>Your order is now on our live board.</p>
-                    <div className={`${theme.cardBg} border ${theme.borderSubtle} p-8 w-full mb-8 text-left rounded-xl`}>
+                
+                {receiptUploaded ? (
+                   <div className="p-12 flex flex-col items-center text-center">
+                     <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", bounce: 0.5 }} className="w-20 h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mb-8"><CheckCircle2 className="w-10 h-10" /></motion.div>
+                     <h2 className={`text-4xl font-black uppercase tracking-tighter mb-4 ${theme.heading}`}>Receipt Verified</h2>
+                     <p className={`${theme.textMuted} font-light mb-10`}>Your order is now being processed by our kitchen.</p>
+                     <button onClick={closeCheckoutEntirely} className={`font-mono text-xs tracking-widest uppercase ${theme.textMuted} hover:${theme.heading} transition-colors border-b ${theme.borderSubtle} pb-1`}>Back to Home</button>
+                   </div>
+                ) : orderSuccess ? (
+                  <div className="p-8 flex flex-col">
+                    <div className="flex flex-col items-center text-center mb-8">
+                      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", bounce: 0.5 }} className="w-16 h-16 bg-brand-orange/20 text-brand-orange rounded-full flex items-center justify-center mb-6"><CheckCircle2 className="w-8 h-8" /></motion.div>
+                      <h2 className={`text-3xl font-black uppercase tracking-tighter mb-2 ${theme.heading}`}>Order Placed</h2>
+                      <p className={`${theme.textMuted} font-light text-sm`}>Please make your transfer to the account below.</p>
+                    </div>
+                    
+                    <div className={`${theme.cardBg} border ${theme.borderSubtle} p-6 w-full mb-6 text-left rounded-xl`}>
                       <p className="font-mono text-[10px] text-brand-orange tracking-widest uppercase mb-4">Transfer Details</p>
-                      <p className={`font-bold text-xl mb-1 ${theme.heading}`}>Guaranty Trust Bank</p>
-                      <p className={`text-3xl tracking-widest font-mono font-light mb-2 ${theme.heading}`}>0123456789</p>
-                      <p className={`text-sm ${theme.textMutedLight} mb-6`}>Food Wave Bistro Ltd.</p>
-                      <div className={`pt-6 border-t ${theme.borderSubtle} flex justify-between items-end`}>
-                        <span className={`${theme.textMutedLight} font-light`}>Amount Due:</span><span className="font-black text-2xl text-brand-orange">₦{finalTotal.toLocaleString()}</span>
+                      <p className={`font-bold text-lg mb-1 ${theme.heading}`}>OPAY MICROFINANCE BANK</p>
+                      <p className={`text-2xl tracking-widest font-mono font-light mb-2 ${theme.heading}`}>6431779024</p>
+                      <p className={`text-xs ${theme.textMutedLight} mb-6`}>Food Wave Bistro.</p>
+                      <div className={`pt-4 border-t ${theme.borderSubtle} flex justify-between items-end`}>
+                        <span className={`${theme.textMutedLight} font-light text-sm`}>Amount Due:</span><span className="font-black text-xl text-brand-orange">₦{finalTotal.toLocaleString()}</span>
                       </div>
                     </div>
-                    <button onClick={() => { setIsCheckoutOpen(false); setOrderSuccess(false); }} className={`font-mono text-xs tracking-widest uppercase ${theme.textMuted} hover:${theme.heading} transition-colors border-b ${theme.borderSubtle} pb-1`}>Back to Home</button>
+
+                    {/* RECEIPT UPLOAD SECTION */}
+                    <div className="mt-4 w-full">
+                      <label className={`block font-mono text-[10px] tracking-widest uppercase ${theme.textMutedLight} mb-4`}>Upload Payment Receipt</label>
+                      <input type="file" accept="image/*" onChange={handleReceiptImageChange} className={`w-full text-sm ${theme.textMuted} file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-bold file:bg-brand-orange/10 file:text-brand-orange hover:file:bg-brand-orange/20 cursor-pointer`} />
+                      
+                      {receiptPreview && (
+                        <div className="mt-4 flex justify-center">
+                          <img src={receiptPreview} alt="Receipt preview" className={`w-32 h-32 object-cover rounded-xl border ${theme.borderSubtle}`} />
+                        </div>
+                      )}
+                      
+                      <button 
+                        onClick={handleReceiptSubmit} 
+                        disabled={!receiptFile || isUploadingReceipt} 
+                        className={`w-full mt-6 py-4 bg-brand-orange text-white font-black uppercase tracking-widest text-xs rounded-xl disabled:opacity-50`}
+                      >
+                        {isUploadingReceipt ? 'Uploading...' : 'Submit Receipt'}
+                      </button>
+                      <button onClick={closeCheckoutEntirely} className={`mt-6 w-full text-center font-mono text-[10px] tracking-widest uppercase ${theme.textMuted} hover:${theme.heading} transition-colors pb-1`}>
+                        I will upload later
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <>

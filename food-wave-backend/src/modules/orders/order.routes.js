@@ -3,6 +3,9 @@ const { createOrder, getAllOrders, updateOrderStatus } = require('./order.contro
 const { protect } = require('../../middleware/auth'); // Turn security back on!
 const { getCustomerOrders } = require('./order.controller');
 const router = express.Router();
+const upload = require('../../middleware/upload'); 
+const { uploadOrderReceipt } = require('./order.controller');
+
 
 router.route('/')
   .post(createOrder) // Public: Anyone can place an order
@@ -13,5 +16,7 @@ router.route('/history/:email')
 
 router.route('/:id/status')
   .patch(protect, updateOrderStatus); // Protected: Only admin can change status
+
+  router.patch('/:id/receipt', upload.single('receipt'), uploadOrderReceipt);
 
 module.exports = router;

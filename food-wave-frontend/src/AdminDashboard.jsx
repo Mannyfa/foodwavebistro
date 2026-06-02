@@ -804,6 +804,22 @@ function OrderCard({ order, onAccept, onReject, onAction, actionLabel, onOpenIns
           {order.customer.name}
         </button>
         <p className="text-xs text-gray-400 mt-1">{order.customer.phone} • {order.customer.address}</p>
+        
+        {/* --- NEW: VIEW RECEIPT BUTTON --- */}
+        {order.payment?.receipt?.url && (
+          <div className="mt-3 mb-2 flex items-center justify-between bg-white/5 p-2 rounded-lg border border-white/5">
+            <span className="text-[10px] text-gray-400 font-mono uppercase tracking-widest">Payment Proof</span>
+            <a 
+              href={order.payment.receipt.url} 
+              target="_blank" 
+              rel="noreferrer" 
+              className="flex items-center gap-1 text-[10px] font-bold text-brand-orange hover:text-white transition-colors bg-brand-orange/10 hover:bg-brand-orange/20 px-2 py-1 rounded"
+            >
+              <ImagePlus className="w-3 h-3"/> View Receipt
+            </a>
+          </div>
+        )}
+
         <div className="mt-3 pt-3 border-t border-white/5">{order.items.map((item, i) => (<p key={i} className="text-xs text-gray-300 mb-1"><span className="text-brand-orange font-bold mr-1">{item.quantity}x</span> {item.menuItem?.name || 'Meal Item'}</p>))}</div>
       </div>
       <div className="flex justify-between items-center pt-3 border-t border-white/10">
