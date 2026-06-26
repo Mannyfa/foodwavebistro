@@ -260,7 +260,7 @@ function Storefront({ isDark, setIsDark }) {
   };
 
   const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-  const deliveryFee = 1500;
+  const deliveryFee = 0; 
   const grandTotal = cartTotal + deliveryFee;
 
   const filteredMenu = activeCategory === 'All' ? menuItems : menuItems.filter(item => item.category === activeCategory);
