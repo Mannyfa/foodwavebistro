@@ -170,7 +170,6 @@ function Storefront({ isDark, setIsDark }) {
     }
   };
 
-  // Fetch immediately when logged in
   useEffect(() => {
     fetchMyOrders();
   }, [loggedInCustomer]);
@@ -469,7 +468,8 @@ function Storefront({ isDark, setIsDark }) {
               <img src="https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?q=80&w=1000&auto=format&fit=crop" alt="Premium Dish" className="w-full h-full object-cover scale-105 hover:scale-100 transition-transform duration-700" />
             </div>
 
-            <div className="w-1/2 flex flex-col items-end text-right">            
+            <div className="w-1/2 flex flex-col items-end text-right">
+              <motion.p initial="hidden" animate="show" variants={fadeUp} className="font-mono text-[8px] md:text-xs text-brand-orange tracking-widest uppercase mb-4 md:mb-8">[ Now delivering in Abuja ]</motion.p>
               <motion.h1 initial="hidden" animate="show" variants={fadeUp} className={`text-2xl sm:text-5xl md:text-7xl lg:text-[7rem] font-black leading-[1] tracking-tighter mb-4 md:mb-8 uppercase ${theme.heading}`}>
                 Premium <br/>Comfort <br/><span className="text-transparent bg-clip-text bg-gradient-to-l from-brand-orange to-brand-gold italic font-medium pr-1 md:pr-4">Delivered.</span>
               </motion.h1>
@@ -589,7 +589,7 @@ function Storefront({ isDark, setIsDark }) {
                           <span>|</span>
                           <span className="flex items-center gap-1"><Clock className="w-2 h-2 md:w-3 md:h-3" /> {item.preparationTime} min</span>
                           
-                          {/* NEW: Explicitly highlight if there are Add-ons */}
+                          {/* Explicitly highlight if there are Add-ons */}
                           {item.addOns?.length > 0 && (
                             <>
                               <span>|</span>
@@ -682,8 +682,7 @@ function Storefront({ isDark, setIsDark }) {
               <div className={`p-8 rounded-2xl ${theme.cardBg} border ${theme.borderSubtle} space-y-8`}>
                 <div>
                   <h4 className="font-mono text-[10px] tracking-widest uppercase text-brand-orange mb-3">Fee Structure</h4>
-                  <p className={`${theme.textMuted} text-sm font-light`}>Standard Base Delivery: <span className={`${theme.heading} font-bold`}>₦1,500</span></p>
-                  <p className="text-[10px] text-gray-500 mt-1 italic">*Fees may vary slightly depending on exact distance from our hub.</p>
+                  <p className={`${theme.textMuted} text-[10px] md:text-sm font-light leading-relaxed`}>Due to location and price changes, delivery price will be communicated directly by a member of our team after order placement.</p>
                 </div>
                 <div className="space-y-4">
                   <h4 className="font-mono text-[10px] tracking-widest uppercase text-brand-orange mb-3">Time Estimates</h4>
@@ -905,7 +904,12 @@ function Storefront({ isDark, setIsDark }) {
                 {cart.length > 0 && (
                   <div className={`p-8 border-t ${theme.borderSubtle} ${theme.cardBg}`}>
                     <div className={`flex justify-between mb-4 ${theme.textMuted} font-light`}><span>Subtotal</span><span>₦{cartTotal.toLocaleString()}</span></div>
-                    <div className={`flex justify-between mb-8 ${theme.textMuted} font-light`}><span>Delivery</span><span>₦{deliveryFee.toLocaleString()}</span></div>
+                    <div className={`flex flex-col mb-8 ${theme.textMuted} font-light`}>
+                      <div className="flex justify-between mb-2">
+                        <span>Delivery</span>
+                        <span className="text-brand-orange text-[10px] font-bold uppercase tracking-widest">Pending</span>
+                      </div>
+                    </div>
                     <div className={`flex justify-between mb-8 text-2xl font-bold uppercase tracking-tighter ${theme.heading}`}><span>Total</span><span className="text-brand-orange">₦{grandTotal.toLocaleString()}</span></div>
                     <button onClick={() => { setFinalTotal(grandTotal); setIsCartOpen(false); setIsCheckoutOpen(true); }} className={`w-full py-5 ${isDark ? 'bg-white text-black' : 'bg-black text-white'} hover:bg-brand-orange hover:text-white font-black uppercase tracking-widest text-xs transition-colors rounded-xl`}>Proceed to Checkout</button>
                   </div>
@@ -930,7 +934,6 @@ function Storefront({ isDark, setIsDark }) {
                      <button onClick={closeCheckoutEntirely} className={`font-mono text-xs tracking-widest uppercase ${theme.textMuted} hover:${theme.heading} transition-colors border-b ${theme.borderSubtle} pb-1`}>Back to Home</button>
                    </div>
                 ) : orderSuccess ? (
-                  // ---> ADDED overflow-y-auto & hide-scrollbar HERE TO FIX SCROLLING <---
                   <div className="p-6 md:p-8 flex flex-col overflow-y-auto hide-scrollbar">
                     <div className="flex flex-col items-center text-center mb-8">
                       <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", bounce: 0.5 }} className="w-16 h-16 bg-brand-orange/20 text-brand-orange rounded-full flex items-center justify-center mb-6"><CheckCircle2 className="w-8 h-8" /></motion.div>
@@ -940,9 +943,9 @@ function Storefront({ isDark, setIsDark }) {
                     
                     <div className={`${theme.cardBg} border ${theme.borderSubtle} p-6 w-full mb-6 text-left rounded-xl shrink-0`}>
                       <p className="font-mono text-[10px] text-brand-orange tracking-widest uppercase mb-4">Transfer Details</p>
-                      <p className={`font-bold text-lg mb-1 ${theme.heading}`}>OPAY Microfinance Bank</p>
-                      <p className={`text-2xl tracking-widest font-mono font-light mb-2 ${theme.heading}`}>6431779024</p>
-                      <p className={`text-xs ${theme.textMutedLight} mb-6`}>Food Wave Bistro..</p>
+                      <p className={`font-bold text-lg mb-1 ${theme.heading}`}>Guaranty Trust Bank</p>
+                      <p className={`text-2xl tracking-widest font-mono font-light mb-2 ${theme.heading}`}>0123456789</p>
+                      <p className={`text-xs ${theme.textMutedLight} mb-6`}>Food Wave Bistro Ltd.</p>
                       <div className={`pt-4 border-t ${theme.borderSubtle} flex justify-between items-end`}>
                         <span className={`${theme.textMutedLight} font-light text-sm`}>Amount Due:</span><span className="font-black text-xl text-brand-orange">₦{finalTotal.toLocaleString()}</span>
                       </div>
@@ -1000,6 +1003,17 @@ function Storefront({ isDark, setIsDark }) {
                     </div>
                     
                     <div className={`p-8 ${theme.cardBg} border-t ${theme.borderSubtle}`}>
+                      
+                      {/* --- ADDED DELIVERY MESSAGE HERE IN CHECKOUT --- */}
+                      <div className="mb-6 p-4 rounded-xl border border-brand-orange/20 bg-brand-orange/5">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[10px] font-bold text-brand-orange uppercase tracking-widest">Delivery Pending</span>
+                        </div>
+                        <p className={`text-[10px] italic leading-relaxed ${theme.textMuted}`}>
+                          * Due to location and price changes, delivery price will be communicated directly by a member of our team.
+                        </p>
+                      </div>
+
                       <div className="flex justify-between items-center mb-8">
                         <span className={`${theme.textMuted} font-light`}>Total to pay:</span>
                         <span className="text-3xl font-black tracking-tighter text-brand-orange">₦{finalTotal.toLocaleString()}</span>
