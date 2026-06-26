@@ -469,7 +469,6 @@ function Storefront({ isDark, setIsDark }) {
             </div>
 
             <div className="w-1/2 flex flex-col items-end text-right">
-              <motion.p initial="hidden" animate="show" variants={fadeUp} className="font-mono text-[8px] md:text-xs text-brand-orange tracking-widest uppercase mb-4 md:mb-8">[ Now delivering in Abuja ]</motion.p>
               <motion.h1 initial="hidden" animate="show" variants={fadeUp} className={`text-2xl sm:text-5xl md:text-7xl lg:text-[7rem] font-black leading-[1] tracking-tighter mb-4 md:mb-8 uppercase ${theme.heading}`}>
                 Premium <br/>Comfort <br/><span className="text-transparent bg-clip-text bg-gradient-to-l from-brand-orange to-brand-gold italic font-medium pr-1 md:pr-4">Delivered.</span>
               </motion.h1>
