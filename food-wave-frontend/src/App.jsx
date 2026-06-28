@@ -942,8 +942,8 @@ function Storefront({ isDark, setIsDark }) {
                     
                     <div className={`${theme.cardBg} border ${theme.borderSubtle} p-6 w-full mb-6 text-left rounded-xl shrink-0`}>
                       <p className="font-mono text-[10px] text-brand-orange tracking-widest uppercase mb-4">Transfer Details</p>
-                      <p className={`font-bold text-lg mb-1 ${theme.heading}`}>Guaranty Trust Bank</p>
-                      <p className={`text-2xl tracking-widest font-mono font-light mb-2 ${theme.heading}`}>0123456789</p>
+                      <p className={`font-bold text-lg mb-1 ${theme.heading}`}>OPAY MFB</p>
+                      <p className={`text-2xl tracking-widest font-mono font-light mb-2 ${theme.heading}`}>9065811002</p>
                       <p className={`text-xs ${theme.textMutedLight} mb-6`}>Food Wave Bistro Ltd.</p>
                       <div className={`pt-4 border-t ${theme.borderSubtle} flex justify-between items-end`}>
                         <span className={`${theme.textMutedLight} font-light text-sm`}>Amount Due:</span><span className="font-black text-xl text-brand-orange">₦{finalTotal.toLocaleString()}</span>
