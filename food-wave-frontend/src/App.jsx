@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChevronRight, Star, Clock, MessageCircle, X, Plus, Minus, 
   CreditCard, Loader2, ArrowLeft, CheckCircle2, MapPin, Phone,
-  Sun, Moon, Info, ShieldCheck, Zap, User, LogOut, Menu, ImagePlus
+  Sun, Moon, Info, ShieldCheck, Zap, User, LogOut, Menu, ImagePlus, Copy
 } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 
@@ -126,6 +126,7 @@ function Storefront({ isDark, setIsDark }) {
   const [receiptPreview, setReceiptPreview] = useState(null);
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
   const [receiptUploaded, setReceiptUploaded] = useState(false);
+  const [copiedAccount, setCopiedAccount] = useState(false);
 
   // CHECK SESSION ON MOUNT
   useEffect(() => {
@@ -360,6 +361,12 @@ function Storefront({ isDark, setIsDark }) {
     }
   };
 
+  const handleCopyAccount = () => {
+    navigator.clipboard.writeText('9065811002');
+    setCopiedAccount(true);
+    setTimeout(() => setCopiedAccount(false), 2000);
+  };
+
   const closeCheckoutEntirely = () => {
     setIsCheckoutOpen(false);
     setOrderSuccess(false);
@@ -469,6 +476,7 @@ function Storefront({ isDark, setIsDark }) {
             </div>
 
             <div className="w-1/2 flex flex-col items-end text-right">
+              <motion.p initial="hidden" animate="show" variants={fadeUp} className="font-mono text-[8px] md:text-xs text-brand-orange tracking-widest uppercase mb-4 md:mb-8">[ Now delivering in Abuja ]</motion.p>
               <motion.h1 initial="hidden" animate="show" variants={fadeUp} className={`text-2xl sm:text-5xl md:text-7xl lg:text-[7rem] font-black leading-[1] tracking-tighter mb-4 md:mb-8 uppercase ${theme.heading}`}>
                 Premium <br/>Comfort <br/><span className="text-transparent bg-clip-text bg-gradient-to-l from-brand-orange to-brand-gold italic font-medium pr-1 md:pr-4">Delivered.</span>
               </motion.h1>
@@ -903,12 +911,17 @@ function Storefront({ isDark, setIsDark }) {
                 {cart.length > 0 && (
                   <div className={`p-8 border-t ${theme.borderSubtle} ${theme.cardBg}`}>
                     <div className={`flex justify-between mb-4 ${theme.textMuted} font-light`}><span>Subtotal</span><span>₦{cartTotal.toLocaleString()}</span></div>
+                    
                     <div className={`flex flex-col mb-8 ${theme.textMuted} font-light`}>
                       <div className="flex justify-between mb-2">
                         <span>Delivery</span>
                         <span className="text-brand-orange text-[10px] font-bold uppercase tracking-widest">Pending</span>
                       </div>
+                      <p className="text-[10px] italic leading-relaxed text-gray-500">
+                        * Due to location and price changes, delivery price will be communicated directly by a member of our team.
+                      </p>
                     </div>
+
                     <div className={`flex justify-between mb-8 text-2xl font-bold uppercase tracking-tighter ${theme.heading}`}><span>Total</span><span className="text-brand-orange">₦{grandTotal.toLocaleString()}</span></div>
                     <button onClick={() => { setFinalTotal(grandTotal); setIsCartOpen(false); setIsCheckoutOpen(true); }} className={`w-full py-5 ${isDark ? 'bg-white text-black' : 'bg-black text-white'} hover:bg-brand-orange hover:text-white font-black uppercase tracking-widest text-xs transition-colors rounded-xl`}>Proceed to Checkout</button>
                   </div>
@@ -943,7 +956,19 @@ function Storefront({ isDark, setIsDark }) {
                     <div className={`${theme.cardBg} border ${theme.borderSubtle} p-6 w-full mb-6 text-left rounded-xl shrink-0`}>
                       <p className="font-mono text-[10px] text-brand-orange tracking-widest uppercase mb-4">Transfer Details</p>
                       <p className={`font-bold text-lg mb-1 ${theme.heading}`}>OPAY MFB</p>
-                      <p className={`text-2xl tracking-widest font-mono font-light mb-2 ${theme.heading}`}>9065811002</p>
+                      
+                      {/* --- NEW COPY BUTTON LOGIC --- */}
+                      <div className="flex items-center gap-3 mb-2">
+                        <p className={`text-2xl tracking-widest font-mono font-light ${theme.heading}`}>9065811002</p>
+                        <button 
+                          onClick={handleCopyAccount}
+                          className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest transition-colors ${copiedAccount ? 'bg-green-500/20 text-green-500' : 'bg-brand-orange/10 text-brand-orange hover:bg-brand-orange/20'}`}
+                        >
+                          {copiedAccount ? <CheckCircle2 className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                          {copiedAccount ? 'Copied' : 'Copy'}
+                        </button>
+                      </div>
+
                       <p className={`text-xs ${theme.textMutedLight} mb-6`}>Food Wave Bistro Ltd.</p>
                       <div className={`pt-4 border-t ${theme.borderSubtle} flex justify-between items-end`}>
                         <span className={`${theme.textMutedLight} font-light text-sm`}>Amount Due:</span><span className="font-black text-xl text-brand-orange">₦{finalTotal.toLocaleString()}</span>
@@ -1003,7 +1028,6 @@ function Storefront({ isDark, setIsDark }) {
                     
                     <div className={`p-8 ${theme.cardBg} border-t ${theme.borderSubtle}`}>
                       
-                      {/* --- ADDED DELIVERY MESSAGE HERE IN CHECKOUT --- */}
                       <div className="mb-6 p-4 rounded-xl border border-brand-orange/20 bg-brand-orange/5">
                         <div className="flex justify-between items-center mb-1">
                           <span className="text-[10px] font-bold text-brand-orange uppercase tracking-widest">Delivery Pending</span>
